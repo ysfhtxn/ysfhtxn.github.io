@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>404 Page Not Found</title>
+<style>
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: black;
+    color: white;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 2rem;
+}
+.message {
+    display: inline;
+}
+.cursor {
+    display: inline-block;
+    width: 0.6rem;
+    background-color: yellow;
+    animation: blink 1s steps(2) infinite;
+    vertical-align: bottom;
+}
+@keyframes blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    50.01%, 100% {
+        opacity: 0;
+    }
+}
+</style>
+<!-- <link rel="stylesheet" href="/source/404.css"> -->
+</head>
+<body>
+    <div class="message"></div><span class="cursor"></span>
+    <script>
+        const messageText = "404 NOT FOUND";
+        const backText = "BACK TO HOME?";
+        const messageElement = document.querySelector('.message');
+        function type(text, element, startIndex, callback) {
+            if (startIndex < text.length) {
+                element.textContent += text.charAt(startIndex);
+                setTimeout(() => type(text, element, startIndex + 1, callback), 100);
+            } else {
+                if (callback) callback();
+            }
+        }
+        type(messageText, messageElement, 0, () => {
+            const linkElement = document.createElement('div');
+            linkElement.style.marginTop = '1rem';
+            messageElement.appendChild(linkElement);
+            type(backText, linkElement, 0, () => {
+                linkElement.innerHTML = `<a href="/" style="color: white; text-decoration: none; display: inline-block;"><u>${backText}</u></a>`;
+            });
+        });
+    </script>
+</body>
+</html>
