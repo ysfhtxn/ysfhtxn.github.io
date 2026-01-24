@@ -1,0 +1,440 @@
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    :root {
+        --primary-color: #ff443f;
+        --bg-color: #f5f5f7;
+        --card-bg: #ffffff;
+        --text-main: #1d1d1f;
+        --text-sub: #86868b;
+    }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+    }
+
+    .nm-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .nm-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+
+    .nm-header h1 {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 20px;
+    }
+
+    .nm-guide-tip {
+        margin-bottom: 20px;
+        font-size: 15px;
+        color: #515154;
+        font-weight: 500;
+        background: rgba(255, 68, 63, 0.05);
+        display: inline-block;
+        padding: 8px 20px;
+        border-radius: 20px;
+        border: 1px solid rgba(255, 68, 63, 0.1);
+    }
+
+    .nm-search-bar {
+        display: flex;
+        background: #fff;
+        padding: 6px;
+        border-radius: 18px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        max-width: 550px;
+        margin: 0 auto;
+    }
+
+    .nm-search-bar input {
+        flex: 1;
+        border: none;
+        padding: 12px 18px;
+        font-size: 15px;
+        outline: none;
+        background: transparent;
+    }
+
+    .nm-search-bar button {
+        background: var(--text-main);
+        color: #fff;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .nm-search-bar button:hover {
+        background: #000;
+    }
+
+    #statusTip {
+        font-size: 13px;
+        color: var(--text-sub);
+        margin-top: 15px;
+        height: 1.2em;
+    }
+
+    /* 展示舞台区域 */
+    #expansionStage {
+        width: 100%;
+        margin-bottom: 30px;
+        display: none;
+        border-radius: 30px;
+        overflow: hidden;
+        background: #000;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        animation: stageFadeIn 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        position: relative;
+    }
+
+    @keyframes stageFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stage-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 100;
+        background: rgba(255,255,255,0.2);
+        color: #fff;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        backdrop-filter: blur(5px);
+        transition: background 0.2s;
+    }
+    .stage-close:hover { background: rgba(255,255,255,0.4); }
+
+    /* 网格区域 */
+    #displayArea {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+        justify-content: center;
+    }
+
+    .nm-card {
+        background: var(--card-bg);
+        border-radius: 22px;
+        padding: 20px;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 140px;
+    }
+
+    .nm-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.06);
+    }
+
+    .nm-card.active {
+        border-color: var(--primary-color);
+        box-shadow: 0 8px 20px rgba(255, 68, 63, 0.1);
+    }
+
+    .nm-card-top {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        width: 100%;
+    }
+
+    .nm-card-cover {
+        width: 65px;
+        height: 65px;
+        border-radius: 12px;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+
+    .nm-card-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .nm-card-info b {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 15px;
+        line-height: 1.4;
+        margin-bottom: 4px;
+        word-break: break-all;
+    }
+
+    .nm-card-info span {
+        font-size: 12px;
+        color: var(--text-sub);
+    }
+
+    .nm-card-btns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .btn-item {
+        padding: 10px;
+        border-radius: 10px;
+        font-size: 12px;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: 0.2s;
+        text-align: center;
+    }
+    .btn-songs { background: #f2f2f7; color: #1d1d1f; }
+    .btn-wall { background: #1d1d1f; color: #fff; }
+
+    /* 唱片墙样式 */
+    .wall-container {
+        height: 450px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        background: #000;
+        overflow: hidden;
+    }
+
+    .flow-row {
+        display: flex;
+        width: max-content;
+        animation: slide var(--animation-duration, 50s) linear infinite;
+    }
+
+    .flow-row a {
+        display: block;
+        transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    }
+
+    .flow-row a:hover {
+        transform: scale(1.1);
+        z-index: 10;
+        position: relative;
+        filter: brightness(1.2);
+    }
+
+    .flow-row img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        display: block;
+    }
+
+    @keyframes slide {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+    }
+
+    #expansionStage.light-mode { background: #fff; border: 1px solid #eee; }
+    #expansionStage.light-mode .stage-close { background: rgba(0,0,0,0.1); color: #000; }
+
+    .song-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 12px;
+        padding: 40px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .song-card {
+        background: #f5f5f7;
+        padding: 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .empty-state {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 80px 0;
+        color: #b0b0b5;
+    }
+</style>
+
+<div class="nm-wrapper">
+    <div class="nm-header">
+        <h1>网易云歌单解析</h1>
+        <div class="nm-guide-tip">✨ 分享网易云音乐用户的个人主页，复制分享链接，即可获取Ta的唱片墙！</div>
+        
+        <div class="nm-search-bar">
+            <input type="text" id="shareUrlInput" placeholder="在此粘贴主页链接或用户ID...">
+            <button id="fetchDataBtn">解析</button>
+        </div>
+        <div id="statusTip"></div>
+    </div>
+
+    <div id="expansionStage"></div>
+
+    <div id="displayArea">
+        <div class="empty-state">在上方输入 ID 开始探索</div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const btn = document.getElementById('fetchDataBtn');
+    const input = document.getElementById('shareUrlInput');
+    const display = document.getElementById('displayArea');
+    const status = document.getElementById('statusTip');
+    const stage = document.getElementById('expansionStage');
+
+    btn.onclick = () => {
+        const val = input.value.trim();
+        let uid = val.match(/id=(\d+)/)?.[1] || ( /^\d+$/.test(val) ? val : null );
+        if (!uid) return alert('请输入有效的用户ID或链接');
+        stage.style.display = 'none';
+        display.innerHTML = '<div class="empty-state">正在加载公开歌单...</div>';
+        
+        fetch(`https://api.ysfhtxn.xyz:8443/user/playlist?uid=${uid}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.playlist && data.playlist.length > 0) {
+                    status.innerHTML = `共发现 ${data.playlist.length} 个公开歌单`;
+                    display.innerHTML = data.playlist.map(item => `
+                        <div class="nm-card" id="card-${item.id}">
+                            <div class="nm-card-top">
+                                <img src="${item.coverImgUrl}?param=120y120" class="nm-card-cover">
+                                <div class="nm-card-info">
+                                    <b title="${item.name}">${item.name}</b>
+                                    <span>${item.trackCount}首歌曲</span>
+                                </div>
+                            </div>
+                            <div class="nm-card-btns">
+                                <button class="btn-item btn-songs" onclick="showOnStage('${item.id}', 'list')">歌曲清单</button>
+                                <button class="btn-item btn-wall" onclick="showOnStage('${item.id}', 'wall')">唱片墙</button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    status.innerHTML = "";
+                    display.innerHTML = `
+                        <div class="empty-state">
+                            <div style="font-size: 24px; margin-bottom: 10px;">🔒</div>
+                            未发现公开歌单<br>
+                            <span style="font-size: 13px; color: var(--text-sub);">
+                                该用户可能设置了歌单隐私，或当前 ID 下无任何公开创建的歌单。
+                            </span>
+                        </div>`;
+                }
+            })
+            .catch(err => {
+                status.innerHTML = "";
+                display.innerHTML = '<div class="empty-state">网络请求失败，请稍后再试</div>';
+            });
+    };
+
+    window.showOnStage = async (pid, mode) => {
+        document.querySelectorAll('.nm-card').forEach(c => c.classList.remove('active'));
+        document.getElementById(`card-${pid}`).classList.add('active');
+
+        stage.style.display = 'block';
+        stage.className = mode === 'list' ? 'light-mode' : '';
+        stage.innerHTML = `
+            <button class="stage-close" onclick="closeStage()">✕</button>
+            <div style="padding:100px; text-align:center; color:${mode === 'list' ? '#666' : '#fff'};">正在解析歌曲数据流...</div>
+        `;
+        
+        window.scrollTo({ top: stage.offsetTop - 20, behavior: 'smooth' });
+
+        try {
+            const res = await fetch(`https://api.ysfhtxn.xyz:8443/playlist/track/all?id=${pid}`);
+            const data = await res.json();
+            const songs = data.songs || [];
+
+            if (mode === 'list') {
+                const listHtml = songs.slice(0, 150).map((s, i) => `
+                    <div class="song-card">
+                        <span style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${i+1}. ${s.name}</span>
+                        <span style="color:#999; font-size:11px; flex-shrink:0; margin-left:10px;">${s.ar[0].name}</span>
+                    </div>
+                `).join('');
+                stage.innerHTML = `<button class="stage-close" onclick="closeStage()">✕</button><div class="song-grid">${listHtml}</div>`;
+            } else {
+                const songData = [];
+                const seenCovers = new Set();
+                songs.forEach(s => {
+                    if (s.al && s.al.picUrl && !seenCovers.has(s.al.picUrl)) {
+                        seenCovers.add(s.al.picUrl);
+                        songData.push({ id: s.id, cover: s.al.picUrl + '?param=200y200', name: s.name });
+                    }
+                });
+
+                const rows = [[], [], []];
+                songData.forEach((item, i) => rows[i % 3].push(item));
+
+                const makeRow = (list, reverse) => {
+                    let items = [...list];
+                    while(items.length < 12 && items.length > 0) items = [...items, ...list];
+                    const content = items.map(item => `
+                        <a href="https://music.163.com/#/song?id=${item.id}" target="_blank" title="${item.name}">
+                            <img src="${item.cover}">
+                        </a>
+                    `).join('');
+                    return `<div class="flow-row" style="animation-direction:${reverse ? 'reverse' : 'normal'}">${content}${content}</div>`;
+                };
+
+                stage.innerHTML = `
+                    <button class="stage-close" onclick="closeStage()">✕</button>
+                    <div class="wall-container" id="activeWall">
+                        ${makeRow(rows[0], false)}
+                        ${makeRow(rows[1], true)}
+                        ${makeRow(rows[2], false)}
+                    </div>`;
+
+                const wallContainer = document.getElementById('activeWall');
+                
+                const flowRows = wallContainer.querySelectorAll('.flow-row');
+                flowRows.forEach(row => {
+                    const width = row.offsetWidth;
+                    const duration = Math.max(20, width * 0.05); // 最少20秒
+                    row.style.setProperty('--animation-duration', duration + 's');
+                });
+
+                wallContainer.addEventListener('mouseenter', () => {
+                    const animations = wallContainer.getAnimations({ subtree: true });
+                    animations.forEach(anim => anim.playbackRate = 0.2);
+                });
+                wallContainer.addEventListener('mouseleave', () => {
+                    const animations = wallContainer.getAnimations({ subtree: true });
+                    animations.forEach(anim => anim.playbackRate = 1.0);
+                });
+            }
+        } catch (e) {
+            stage.innerHTML = `<button class="stage-close" onclick="closeStage()">✕</button><div style="padding:100px; color:red; text-align:center;">解析失败</div>`;
+        }
+    };
+
+    window.closeStage = () => {
+        stage.style.display = 'none';
+        document.querySelectorAll('.nm-card').forEach(c => c.classList.remove('active'));
+    };
+})();
+</script>
